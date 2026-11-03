@@ -205,7 +205,18 @@ class DriverProfile {
         email = (json['user'] as Map<String, dynamic>)['email'] as String? ?? '',
         phone = (json['user'] as Map<String, dynamic>)['phone'] as String?,
         available = (json['driver'] as Map<String, dynamic>?)?['available'] as bool? ?? true,
-        validationLabel = (json['driver'] as Map<String, dynamic>?)?['validation_label'] as String?;
+        validationLabel = (json['driver'] as Map<String, dynamic>?)?['validation_label'] as String?,
+        validationStatus = (json['driver'] as Map<String, dynamic>?)?['validation_status'] as String?,
+        detailsMissing = _strings((json['driver'] as Map<String, dynamic>?)?['details_missing']),
+        documentsMissing = _strings((json['driver'] as Map<String, dynamic>?)?['documents_missing']),
+        locked = (json['driver'] as Map<String, dynamic>?)?['locked'] as bool? ?? false,
+        details = DriverDetails.fromJson((json['driver'] as Map<String, dynamic>?) ?? const {}),
+        documents = ((json['driver'] as Map<String, dynamic>?)?['documents'] as List? ?? const [])
+            .map((d) => DriverDocument.fromJson(d as Map<String, dynamic>))
+            .toList(),
+        cars = ((json['driver'] as Map<String, dynamic>?)?['cars'] as List? ?? const []).map((c) => DriverCar.fromJson(c as Map<String, dynamic>)).toList();
+
+  static List<String> _strings(Object? value) => (value as List?)?.map((e) => '$e').toList() ?? const [];
 
   final String firstName;
   final String lastName;
@@ -213,4 +224,122 @@ class DriverProfile {
   final String? phone;
   final bool available;
   final String? validationLabel;
+  // Étape du recrutement (identified … validated) ; null pour un compte sans fiche chauffeur.
+  final String? validationStatus;
+  final List<String> detailsMissing;
+  final List<String> documentsMissing;
+  // Dossier relu par l'équipe : les informations réglementées ne se modifient plus.
+  final bool locked;
+  final DriverDetails details;
+  // Pièces personnelles déjà envoyées (celles des véhicules sont dans la fiche du véhicule).
+  final List<DriverDocument> documents;
+  final List<DriverCar> cars;
+
+  // L'accès aux courses et aux gains n'est ouvert qu'une fois le dossier validé.
+  bool get validated => validationStatus == null || validationStatus == 'validated';
+}
+
+// Informations réglementées du dossier (statut, adresse, IBAN, SIRET, société).
+class DriverDetails {
+  DriverDetails.fromJson(Map<String, dynamic> json)
+      : legalStatus = json['legal_status'] as String? ?? 'self_employed',
+        address = json['address'] as String? ?? '',
+        postcode = json['postcode'] as String? ?? '',
+        city = json['city'] as String? ?? '',
+        iban = json['iban'] as String? ?? '',
+        siret = json['siret'] as String? ?? '',
+        businessName = json['business_name'] as String? ?? '',
+        rcsCode = json['rcs_code'] as String? ?? '',
+        shareCapital = '${json['share_capital'] ?? ''}',
+        identityType = json['identity_type'] as String?,
+        identityExpiry = json['identity_expiry'] as String?,
+        vtcCardNumber = json['vtc_card_number'] as String? ?? '',
+        vtcExpiry = json['vtc_expiry'] as String?;
+
+  // self_employed (auto-entrepreneur), company (société) ou taxi.
+  final String legalStatus;
+  final String address;
+  final String postcode;
+  final String city;
+  final String iban;
+  final String siret;
+  final String businessName;
+  final String rcsCode;
+  final String shareCapital;
+  // Pièce d'identité (passport, national_identity_card, residency_card), carte VTC ; dates au format AAAA-MM-JJ.
+  final String? identityType;
+  final String? identityExpiry;
+  final String vtcCardNumber;
+  final String? vtcExpiry;
+}
+
+class DriverDocument {
+  DriverDocument.fromJson(Map<String, dynamic> json)
+      : id = json['id'] as int,
+        kind = json['kind'] as String,
+        filename = json['filename'] as String? ?? '',
+        byteSize = json['byte_size'] as int? ?? 0;
+
+  final int id;
+  // identity, driving_license, vtc_card, company_registration, car_registration, car_insurance, car_picture, car_rental_contract.
+  final String kind;
+  final String filename;
+  final int byteSize;
+}
+
+// Véhicule du chauffeur et ses pièces (carte grise, assurance, photo, contrat de location).
+class DriverCar {
+  DriverCar.fromJson(Map<String, dynamic> json)
+      : id = json['id'] as int,
+        vehicleTypeId = json['vehicle_type_id'] as int?,
+        vehicleTypeName = json['vehicle_type_name'] as String?,
+        brand = json['brand'] as String? ?? '',
+        model = json['model'] as String? ?? '',
+        color = json['color'] as String? ?? '',
+        plateNumber = json['plate_number'] as String? ?? '',
+        motor = json['motor'] as String? ?? 'gas',
+        seats = json['seats'] as int?,
+        firstRegistrationOn = json['first_registration_on'] as String?,
+        wifi = json['wifi'] as bool? ?? false,
+        rental = json['rental'] as bool? ?? false,
+        enabled = json['enabled'] as bool? ?? true,
+        validationLabel = json['validation_label'] as String? ?? '',
+        validated = json['validation_status'] == 'validated',
+        locked = json['locked'] as bool? ?? false,
+        documentsMissing = ((json['documents_missing'] as List?) ?? const []).map((e) => '$e').toList(),
+        documents = ((json['documents'] as List?) ?? const []).map((d) => DriverDocument.fromJson(d as Map<String, dynamic>)).toList();
+
+  final int id;
+  final int? vehicleTypeId;
+  final String? vehicleTypeName;
+  final String brand;
+  final String model;
+  final String color;
+  final String plateNumber;
+  // gas (thermique), hybrid ou electric.
+  final String motor;
+  final int? seats;
+  final String? firstRegistrationOn;
+  final bool wifi;
+  final bool rental;
+  final bool enabled;
+  final String validationLabel;
+  final bool validated;
+  // Véhicule validé par l'équipe : seuls l'activation, la couleur et le wifi restent modifiables.
+  final bool locked;
+  final List<String> documentsMissing;
+  final List<DriverDocument> documents;
+
+  String get name => '$brand $model'.trim();
+}
+
+class VehicleCategory {
+  VehicleCategory.fromJson(Map<String, dynamic> json)
+      : id = json['id'] as int,
+        name = json['name'] as String,
+        passengers = json['passenger_capacity'] as int? ?? 4;
+
+  final int id;
+  final String name;
+  final int passengers;
 }

@@ -35,6 +35,27 @@ class ApiClient {
   Future<dynamic> patch(String path, [Map<String, dynamic>? body]) => _send('PATCH', path, body: body);
   Future<dynamic> delete(String path) => _send('DELETE', path);
 
+  // Envoi d'un fichier (pièce justificative) : formulaire multipart, avec le même renouvellement de session.
+  Future<dynamic> upload(String path, {required Map<String, String> fields, required String fileField, required List<int> bytes, required String filename}) async {
+    Future<http.Response> attempt(StoredSession session) async {
+      final request = http.MultipartRequest('POST', _uri(path))
+        ..headers.addAll({'Accept': 'application/json', 'Authorization': 'Bearer ${session.token}'})
+        ..fields.addAll(fields)
+        ..files.add(http.MultipartFile.fromBytes(fileField, bytes, filename: filename));
+      return http.Response.fromStream(await _http.send(request));
+    }
+
+    final session = await store.read();
+    if (session == null) throw SessionExpired();
+    var response = await attempt(session);
+    if (response.statusCode == 401) {
+      final renewed = await _refresh(session);
+      if (renewed == null) throw SessionExpired();
+      response = await attempt(renewed);
+    }
+    return _decode(response);
+  }
+
   // Connexion : pas de jeton à envoyer, la réponse ouvre la session.
   Future<Map<String, dynamic>> login({required String email, required String password, required Map<String, String?> device}) async {
     final response = await _http.post(_uri('/api/v1/mobile/sessions'), headers: _headers(null),

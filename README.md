@@ -2,6 +2,7 @@
 
 App des chauffeurs partenaires. Elle permet de :
 - se connecter ;
+- compléter son dossier de recrutement (informations, documents, véhicule) tant qu'il n'est pas validé ;
 - accepter ou refuser les courses proposées ;
 - suivre chaque course (en route, arrivé, démarrée, terminée) avec l'itinéraire et l'appel du client ;
 - suivre ses gains et ses relevés mensuels ;
@@ -65,6 +66,22 @@ Canaux Android :
 
 Chaque chauffeur peut les régler dans les paramètres du téléphone.
 
+## Dossier de recrutement dans l'app
+
+Un chauffeur qui n'est pas encore « Validé » se connecte à l'app, mais Courses et Gains lui expliquent que son dossier est en cours. Son **profil** affiche la fiche « Dossier de recrutement » : l'étape sur 5 (2/5 à 5/5), ce qu'il reste à fournir, et trois boutons.
+
+| Bouton | Contenu |
+|---|---|
+| Mes informations | Statut juridique (auto-entrepreneur, société, taxi), SIRET, adresse, IBAN ; nom, RCS et capital hors auto-entrepreneur |
+| Mes documents | Pièce d'identité (type, date de fin), permis, carte VTC (numéro, date de fin), Kbis hors auto-entrepreneur. Photo, galerie ou PDF, 8 Mo maximum |
+| Mon véhicule | Marque, modèle, immatriculation, catégorie, motorisation… puis carte grise, assurance, photo (et contrat si loué) |
+
+- Le dossier avance seul : 3/5 quand les informations sont complètes, 4/5 quand les pièces et un véhicule aux documents complets sont reçus. L'équipe valide ensuite depuis le site (5/5, puis « Validé »).
+- **À 5/5**, les informations et les pièces personnelles sont en lecture seule (le serveur les refuse aussi) ; le chauffeur peut encore ajouter ou changer de véhicule. Un véhicule validé n'est plus modifiable, sauf l'activation, la couleur et le wifi.
+- L'inscription d'un nouveau chauffeur reste sur le site (`/devenir-chauffeur`) ; l'app sert à compléter le dossier avec le même compte. Tout passe par les routes déjà utilisées par le site : `GET/PATCH /profile`, `POST/DELETE /profile/documents`, `GET/POST/PATCH/DELETE /profile/cars`, `GET /vehicle_types`.
+- Les photos sont réduites à 2200 px avant l'envoi ; le serveur vérifie le type réel du fichier (PDF, JPEG, PNG ou WebP).
+- Android : l'appareil photo et la galerie passent par le sélecteur du système, sans permission à déclarer.
+
 ## Session
 
 - **Durée** : le chauffeur reste connecté **30 jours**. Ce délai se prolonge à chaque utilisation, et le jeton d'accès de 12 h se renouvelle tout seul.
@@ -78,9 +95,11 @@ Chaque chauffeur peut les régler dans les paramètres du téléphone.
 | `lib/api` | Client HTTP (renouvellement automatique de la session) et routes utilisées |
 | `lib/auth` | Connexion, déconnexion, stockage sécurisé des jetons |
 | `lib/push` | Firebase Messaging, canaux Android, ouverture de la course depuis une notification |
-| `lib/models` | Propositions, courses (et leur étape), gains, relevés, profil |
-| `lib/screens` | Connexion, Courses (propositions / à venir / historique), détail d'une course, Gains, Profil |
-| `test` | Client API, modèles et formats, écran de connexion |
+| `lib/models` | Propositions, courses (et leur étape), gains, relevés, profil, dossier de recrutement, véhicules |
+| `lib/recruitment` | Étapes et libellés du recrutement, contrôles des formulaires, choix d'un fichier (photo, galerie, PDF) |
+| `lib/screens` | Connexion, Courses (propositions / à venir / historique), détail d'une course, Gains, Profil, et les écrans du dossier (informations, documents, véhicules) |
+| `lib/widgets` | Éléments communs, fiche « Dossier de recrutement », carte d'une pièce justificative |
+| `test` | Client API, modèles et formats, écran de connexion, dossier de recrutement (informations, documents, véhicule) |
 
 ```bash
 flutter analyze

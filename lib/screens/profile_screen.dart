@@ -9,6 +9,10 @@ import '../models/models.dart';
 import '../push/push_service.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/recruitment_card.dart';
+import 'recruitment_details_screen.dart';
+import 'recruitment_cars_screen.dart';
+import 'recruitment_documents_screen.dart';
 
 // Profil : disponibilité (seuls les chauffeurs disponibles reçoivent les propositions), état des notifications,
 // accès au dossier sur le site et déconnexion de cet appareil.
@@ -36,6 +40,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } catch (error) {
       if (mounted) handleError(context, error);
     }
+  }
+
+  Future<void> _editDetails() async {
+    final profile = _profile;
+    if (profile == null) return;
+    final updated = await Navigator.of(context).push<DriverProfile>(MaterialPageRoute(builder: (_) => RecruitmentDetailsScreen(profile: profile)));
+    if (updated != null && mounted) {
+      setState(() => _profile = updated);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Informations enregistrées.')));
+    }
+  }
+
+  Future<void> _editDocuments() async {
+    final profile = _profile;
+    if (profile == null) return;
+    final updated = await Navigator.of(context).push<DriverProfile>(MaterialPageRoute(builder: (_) => RecruitmentDocumentsScreen(profile: profile)));
+    if (updated != null && mounted) setState(() => _profile = updated);
+  }
+
+  Future<void> _editCars() async {
+    final profile = _profile;
+    if (profile == null) return;
+    final updated = await Navigator.of(context).push<DriverProfile>(MaterialPageRoute(builder: (_) => RecruitmentCarsScreen(profile: profile)));
+    if (updated != null && mounted) setState(() => _profile = updated);
   }
 
   Future<void> _setAvailable(bool value) async {
@@ -79,6 +107,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   if (profile.validationLabel != null) ...[const SizedBox(height: 10), Pill(profile.validationLabel!)],
                 ]),
               ),
+              if (!profile.validated) ...[
+                const SizedBox(height: 12),
+                RecruitmentCard(profile: profile, onEditDetails: _editDetails, onEditDocuments: _editDocuments, onEditCars: _editCars),
+              ],
               const SizedBox(height: 12),
               SectionCard(
                 padding: EdgeInsets.zero,

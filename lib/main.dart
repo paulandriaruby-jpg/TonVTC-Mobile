@@ -9,6 +9,7 @@ import 'auth/auth_controller.dart';
 import 'auth/session_store.dart';
 import 'config.dart';
 import 'push/push_service.dart';
+import 'recruitment/document_picker.dart';
 import 'screens/home_shell.dart';
 import 'screens/login_screen.dart';
 import 'theme.dart';
@@ -39,6 +40,7 @@ class DriverApp extends StatelessWidget {
         ChangeNotifierProvider.value(value: auth),
         Provider.value(value: api),
         Provider.value(value: push),
+        Provider<DocumentPicker>.value(value: DevicePicker()),
       ],
       child: MaterialApp(
         title: appName,
