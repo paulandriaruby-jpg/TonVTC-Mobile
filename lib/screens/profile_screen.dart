@@ -1,0 +1,113 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../api/driver_api.dart';
+import '../auth/auth_controller.dart';
+import '../config.dart';
+import '../models/models.dart';
+import '../push/push_service.dart';
+import '../theme.dart';
+import '../widgets/common.dart';
+
+// Profil : disponibilité (seuls les chauffeurs disponibles reçoivent les propositions), état des notifications,
+// accès au dossier sur le site et déconnexion de cet appareil.
+class ProfileScreen extends StatefulWidget {
+  const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  DriverProfile? _profile;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final profile = await context.read<DriverApi>().profile();
+      if (mounted) setState(() => _profile = profile);
+    } catch (error) {
+      if (mounted) handleError(context, error);
+    }
+  }
+
+  Future<void> _setAvailable(bool value) async {
+    setState(() => _saving = true);
+    try {
+      final profile = await context.read<DriverApi>().setAvailable(value);
+      if (mounted) setState(() => _profile = profile);
+    } catch (error) {
+      if (mounted) handleError(context, error);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = _profile;
+    final push = context.read<PushService>();
+    return Scaffold(
+      appBar: AppBar(title: const Text('Profil', style: TextStyle(fontWeight: FontWeight.w800))),
+      body: profile == null
+          ? const Center(child: CircularProgressIndicator())
+          : ListView(padding: const EdgeInsets.all(16), children: [
+              SectionCard(
+                color: profile.available ? AppColors.successSoft : Colors.white,
+                child: SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: profile.available,
+                  onChanged: _saving ? null : _setAvailable,
+                  title: Text(profile.available ? 'Disponible' : 'Indisponible', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
+                  subtitle: Text(profile.available ? 'Vous recevez les nouvelles courses.' : 'Aucune course ne vous sera proposée (pause, congés…).'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SectionCard(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('${profile.firstName} ${profile.lastName}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 4),
+                  Text(profile.email, style: const TextStyle(color: AppColors.muted)),
+                  if (profile.phone != null) Text(profile.phone!, style: const TextStyle(color: AppColors.muted)),
+                  if (profile.validationLabel != null) ...[const SizedBox(height: 10), Pill(profile.validationLabel!)],
+                ]),
+              ),
+              const SizedBox(height: 12),
+              SectionCard(
+                padding: EdgeInsets.zero,
+                child: Column(children: [
+                  ListTile(
+                    leading: Icon(push.available ? Icons.notifications_active_outlined : Icons.notifications_off_outlined, color: push.available ? AppColors.success : AppColors.danger),
+                    title: const Text('Notifications'),
+                    subtitle: Text(push.available
+                        ? (push.token != null ? 'Actives sur ce téléphone.' : 'Autorisez les notifications dans les réglages du téléphone.')
+                        : 'Indisponibles dans cette version de test (Firebase non configuré).'),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.folder_open_outlined),
+                    title: const Text('Mon dossier et mes véhicules'),
+                    subtitle: const Text('Sur le site'),
+                    trailing: const Icon(Icons.open_in_new, size: 18),
+                    onTap: () => launchUrl(Uri.parse('$siteUrl/espace/recrutement'), mode: LaunchMode.externalApplication),
+                  ),
+                ]),
+              ),
+              const SizedBox(height: 20),
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(foregroundColor: AppColors.danger),
+                onPressed: () => context.read<AuthController>().logout(),
+                icon: const Icon(Icons.logout),
+                label: const Text('Se déconnecter de ce téléphone'),
+              ),
+            ]),
+    );
+  }
+}
