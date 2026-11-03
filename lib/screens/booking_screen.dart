@@ -1,0 +1,867 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../api/api_client.dart';
+import '../auth/auth_controller.dart';
+import '../booking/booking_controller.dart';
+import '../booking/rules.dart';
+import '../models/models.dart';
+import '../theme.dart';
+import '../util/format.dart';
+import '../widgets/common.dart';
+import '../widgets/logo.dart';
+import 'address_search_screen.dart';
+import 'login_sheet.dart';
+
+// Réservation en 4 étapes, comme sur le site : Trajet, Véhicule, Coordonnées, Confirmation.
+class BookingScreen extends StatelessWidget {
+  const BookingScreen({super.key, required this.onShowRides});
+
+  final VoidCallback onShowRides;
+
+  @override
+  Widget build(BuildContext context) {
+    final booking = context.watch<BookingController>();
+    final index = BookingStep.values.indexOf(booking.step);
+    return PopScope(
+      canPop: booking.step == BookingStep.trip || booking.step == BookingStep.done,
+      onPopInvokedWithResult: (popped, _) => popped ? null : booking.back(),
+      child: Scaffold(
+        appBar: AppBar(
+          leading: booking.step == BookingStep.vehicle || booking.step == BookingStep.customer ? BackButton(onPressed: booking.back) : null,
+          title: booking.step == BookingStep.trip
+              ? const Row(
+                  children: [
+                    Logo(size: 30),
+                    SizedBox(width: 10),
+                    Text('Réserver', style: TextStyle(fontWeight: FontWeight.w800)),
+                  ],
+                )
+              : Text(['Trajet', 'Véhicule', 'Coordonnées', 'Réservation enregistrée'][index], style: const TextStyle(fontWeight: FontWeight.w800)),
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(4),
+            child: LinearProgressIndicator(value: (index + 1) / 4, minHeight: 4, color: AppColors.brand, backgroundColor: AppColors.surface),
+          ),
+        ),
+        body: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          child: switch (booking.step) {
+            BookingStep.trip => const _TripStep(key: ValueKey('trip')),
+            BookingStep.vehicle => const _VehicleStep(key: ValueKey('vehicle')),
+            BookingStep.customer => const _CustomerStep(key: ValueKey('customer')),
+            BookingStep.done => _DoneStep(key: const ValueKey('done'), onShowRides: onShowRides),
+          },
+        ),
+      ),
+    );
+  }
+}
+
+Widget _errorBox(String? message) => message == null
+    ? const SizedBox.shrink()
+    : Container(
+        margin: const EdgeInsets.only(top: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: AppColors.dangerSoft, borderRadius: BorderRadius.circular(8)),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.error_outline, color: AppColors.danger, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(color: AppColors.danger, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+      );
+
+Widget _primary({required String label, required VoidCallback? onPressed, bool busy = false, IconData icon = Icons.arrow_forward}) => FilledButton.icon(
+  style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
+  onPressed: busy ? null : onPressed,
+  icon: busy ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white)) : Icon(icon),
+  label: Text(label),
+);
+
+// ── Étape 1 : trajet ───────────────────────────────────────────────────────────
+class _TripStep extends StatelessWidget {
+  const _TripStep({super.key});
+
+  Future<void> _pickAddress(BuildContext context, bool isPickup) async {
+    final place = await Navigator.of(context)
+        .push<Place>(MaterialPageRoute(builder: (_) => AddressSearchScreen(title: isPickup ? 'Adresse de départ' : 'Adresse d’arrivée')));
+    if (place == null || !context.mounted) return;
+    context.read<BookingController>().update((draft) => isPickup ? draft.pickup = place : draft.destination = place);
+  }
+
+  Future<void> _pickDate(BuildContext context, {required bool isReturn}) async {
+    final booking = context.read<BookingController>();
+    final current = isReturn ? (booking.returning ?? booking.departure.add(const Duration(hours: 3))) : booking.departure;
+    final first = isReturn ? booking.departure : booking.earliestDeparture;
+    final date = await showDatePicker(
+      context: context,
+      initialDate: current.isBefore(first) ? first : current,
+      firstDate: DateTime(first.year, first.month, first.day),
+      lastDate: booking.now.add(const Duration(days: 365)),
+      helpText: isReturn ? 'Date du retour' : 'Date du départ',
+    );
+    if (date == null || !context.mounted) return;
+    final time = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(current), helpText: 'Heure (par quart d’heure)');
+    if (time == null || !context.mounted) return;
+    final chosen = roundToQuarter(DateTime(date.year, date.month, date.day, time.hour, time.minute));
+    booking.update((draft) => isReturn ? draft.returning = chosen : draft.departure = chosen);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final booking = context.watch<BookingController>();
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        const Text('Réservez votre chauffeur', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 4),
+        const Text('Prix fixe connu à l’avance, chauffeur professionnel confirmé.', style: TextStyle(color: AppColors.muted)),
+        const SizedBox(height: 16),
+        SegmentedButton<bool>(
+          segments: const [
+            ButtonSegment(value: false, label: Text('Aller simple')),
+            ButtonSegment(value: true, label: Text('Aller-retour')),
+          ],
+          selected: {booking.roundTrip},
+          onSelectionChanged: (value) => booking.update((draft) {
+            draft.roundTrip = value.first;
+            if (draft.roundTrip) draft.returning ??= draft.departure.add(const Duration(hours: 3));
+          }),
+        ),
+        const SizedBox(height: 14),
+        SectionCard(
+          padding: EdgeInsets.zero,
+          child: Column(
+            children: [
+              _FieldTile(
+                icon: Icons.trip_origin,
+                label: 'Départ',
+                value: booking.pickup?.address,
+                placeholder: 'Adresse de départ',
+                onTap: () => _pickAddress(context, true),
+              ),
+              const Divider(height: 1),
+              _FieldTile(
+                icon: Icons.place_outlined,
+                label: 'Arrivée',
+                value: booking.destination?.address,
+                placeholder: 'Adresse d’arrivée',
+                onTap: () => _pickAddress(context, false),
+                trailing: booking.pickup != null || booking.destination != null
+                    ? IconButton(tooltip: 'Inverser', icon: const Icon(Icons.swap_vert), onPressed: booking.swap)
+                    : null,
+              ),
+              const Divider(height: 1),
+              _FieldTile(
+                icon: Icons.event,
+                label: 'Départ le',
+                value: '${dayLabel(booking.departure)} à ${time(booking.departure)}',
+                onTap: () => _pickDate(context, isReturn: false),
+              ),
+              if (booking.roundTrip) ...[
+                const Divider(height: 1),
+                _FieldTile(
+                  icon: Icons.event_repeat,
+                  label: 'Retour le',
+                  value: booking.returning == null ? null : '${dayLabel(booking.returning!)} à ${time(booking.returning!)}',
+                  placeholder: 'Date et heure du retour',
+                  onTap: () => _pickDate(context, isReturn: true),
+                ),
+              ],
+            ],
+          ),
+        ),
+        _errorBox(booking.error),
+        const SizedBox(height: 16),
+        _primary(label: 'VOIR LES PRIX', busy: booking.busy, onPressed: booking.showPrices),
+        const SizedBox(height: 18),
+        for (final (icon, text) in const [
+          (Icons.lock_outline, 'Prix fixe, il ne change plus après la réservation'),
+          (Icons.verified_user_outlined, 'Chauffeurs et véhicules vérifiés'),
+          (Icons.event_busy_outlined, 'Annulation gratuite jusqu’à 24 h avant'),
+        ])
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              children: [
+                Icon(icon, size: 18, color: AppColors.brand),
+                const SizedBox(width: 10),
+                Expanded(child: Text(text)),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _FieldTile extends StatelessWidget {
+  const _FieldTile({required this.icon, required this.label, required this.onTap, this.value, this.placeholder, this.trailing});
+
+  final IconData icon;
+  final String label;
+  final String? value;
+  final String? placeholder;
+  final VoidCallback onTap;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+    onTap: onTap,
+    leading: Icon(icon, color: AppColors.brand),
+    title: Text(label, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+    subtitle: Text(
+      value ?? placeholder ?? '',
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(fontSize: 16, color: value == null ? AppColors.muted : AppColors.ink, fontWeight: value == null ? FontWeight.w400 : FontWeight.w600),
+    ),
+    trailing: trailing ?? const Icon(Icons.chevron_right),
+  );
+}
+
+// ── Étape 2 : véhicule ─────────────────────────────────────────────────────────
+// Photos des gammes (mêmes que le site, gs-vtc-web/public/images) ; icône sinon.
+const _vehicleImages = {'berline': 'assets/images/berline.webp'};
+
+class _VehicleStep extends StatelessWidget {
+  const _VehicleStep({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final booking = context.watch<BookingController>();
+    final quote = booking.quote!;
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _TripRecap(booking: booking),
+        const SizedBox(height: 12),
+        for (final offer in quote.offers)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: BorderSide(color: booking.offer == offer ? AppColors.brand : AppColors.line, width: 2),
+              ),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () => booking.selectOffer(offer),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      if (_vehicleImages[offer.slug] case final image?)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Image.asset(image, height: 120, fit: BoxFit.contain, semanticLabel: offer.name),
+                        ),
+                      Row(
+                        children: [
+                          if (!_vehicleImages.containsKey(offer.slug)) ...[
+                            Container(
+                              width: 64,
+                              height: 64,
+                              decoration: BoxDecoration(color: AppColors.brandSoft, borderRadius: BorderRadius.circular(8)),
+                              child: const Icon(Icons.directions_car_filled, size: 34, color: AppColors.brand),
+                            ),
+                            const SizedBox(width: 14),
+                          ],
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(offer.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                                if (offer.description != null) Text(offer.description!, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+                                const SizedBox(height: 4),
+                                Text('${offer.passengers} passagers · ${offer.luggage} bagages', style: const TextStyle(fontSize: 13)),
+                                if (offer.pricingNote != null)
+                                  Text(
+                                    offer.pricingNote!,
+                                    style: const TextStyle(color: AppColors.accent, fontSize: 12, fontWeight: FontWeight.w600),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(money(offer.price), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                              Text(booking.roundTrip ? 'aller-retour' : 'prix fixe', style: const TextStyle(color: AppColors.muted, fontSize: 12)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        SectionCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Vous voyagez avec un enfant ?', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+              Text(
+                quote.babySeatPrice + quote.boosterSeatPrice > 0 ? 'Supplément par équipement et par trajet.' : 'Équipements fournis gratuitement.',
+                style: const TextStyle(color: AppColors.muted, fontSize: 13),
+              ),
+              _SeatRow(
+                label: 'Siège bébé',
+                help: 'Jusqu’à 13 kg',
+                price: quote.babySeatPrice,
+                count: booking.babySeats,
+                onChange: (d) => booking.changeSeats(baby: d),
+              ),
+              _SeatRow(
+                label: 'Rehausseur',
+                help: 'À partir de 15 kg',
+                price: quote.boosterSeatPrice,
+                count: booking.boosterSeats,
+                onChange: (d) => booking.changeSeats(booster: d),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        _TotalBar(total: booking.total),
+        const SizedBox(height: 12),
+        _primary(label: 'Continuer', onPressed: booking.offer == null ? null : booking.toCustomer),
+      ],
+    );
+  }
+}
+
+class _SeatRow extends StatelessWidget {
+  const _SeatRow({required this.label, required this.help, required this.price, required this.count, required this.onChange});
+
+  final String label;
+  final String help;
+  final double price;
+  final int count;
+  final void Function(int delta) onChange;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: 12),
+    child: Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+              Text(price > 0 ? '$help · ${money(price)}' : help, style: const TextStyle(color: AppColors.muted, fontSize: 12)),
+            ],
+          ),
+        ),
+        IconButton.outlined(onPressed: count > 0 ? () => onChange(-1) : null, icon: const Icon(Icons.remove), tooltip: 'Retirer : $label'),
+        SizedBox(
+          width: 32,
+          child: Text(
+            '$count',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+          ),
+        ),
+        IconButton.outlined(onPressed: count < maxChildSeats ? () => onChange(1) : null, icon: const Icon(Icons.add), tooltip: 'Ajouter : $label'),
+      ],
+    ),
+  );
+}
+
+class _TotalBar extends StatelessWidget {
+  const _TotalBar({required this.total, this.label = 'Total TTC'});
+
+  final double total;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => SectionCard(
+    color: AppColors.brandSoft,
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+        ),
+        Text(
+          money(total),
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.brand),
+        ),
+      ],
+    ),
+  );
+}
+
+class _TripRecap extends StatelessWidget {
+  const _TripRecap({required this.booking});
+
+  final BookingController booking;
+
+  @override
+  Widget build(BuildContext context) => SectionCard(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        RouteLines(pickup: booking.pickup!.address, destination: booking.destination!.address, dense: true),
+        const SizedBox(height: 8),
+        Text(
+          [
+            '${dayLabel(booking.departure)} à ${time(booking.departure)}',
+            if (booking.quote != null && booking.quote!.distanceKm > 0)
+              '${booking.quote!.distanceKm.toStringAsFixed(1)} km · ${booking.quote!.durationMinutes.round()} min',
+            if (booking.roundTrip && booking.returning != null) 'retour ${dayLabel(booking.returning!).toLowerCase()} à ${time(booking.returning!)}',
+          ].join(' · '),
+          style: const TextStyle(color: AppColors.muted, fontSize: 13),
+        ),
+      ],
+    ),
+  );
+}
+
+// ── Étape 3 : coordonnées (compte obligatoire) ─────────────────────────────────
+class _CustomerStep extends StatefulWidget {
+  const _CustomerStep({super.key});
+
+  @override
+  State<_CustomerStep> createState() => _CustomerStepState();
+}
+
+class _CustomerStepState extends State<_CustomerStep> {
+  final _first = TextEditingController();
+  final _last = TextEditingController();
+  final _email = TextEditingController();
+  final _phone = TextEditingController();
+  final _transport = TextEditingController();
+  final _sign = TextEditingController();
+  final _promo = TextEditingController();
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (context.read<AuthController>().state == AuthState.signedIn) _loadAccount();
+  }
+
+  Future<void> _loadAccount() async {
+    final booking = context.read<BookingController>();
+    await booking.loadAccount();
+    if (!mounted) return;
+    _first.text = booking.firstName;
+    _last.text = booking.lastName;
+    _email.text = booking.email;
+    _phone.text = booking.phone;
+    _sign.text = booking.signName;
+    _transport.text = booking.transportNumber;
+    setState(() => _loaded = true);
+  }
+
+  Future<void> _login() async {
+    if (await showLoginSheet(context) && mounted) await _loadAccount();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final booking = context.watch<BookingController>();
+    final signedIn = context.watch<AuthController>().state == AuthState.signedIn;
+    final split = booking.split;
+    final terminal = booking.terminalKind;
+    final atPickup = booking.quote?.pickupKind != null;
+    void bind(void Function(BookingController draft) change) {
+      change(booking);
+      setState(() {});
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _TripRecap(booking: booking),
+        const SizedBox(height: 12),
+        if (!signedIn)
+          SectionCard(
+            color: AppColors.accentSoft,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text('Un compte est nécessaire pour réserver', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                const SizedBox(height: 4),
+                const Text(
+                  'Connectez-vous avec Google ou votre e-mail : vos coordonnées sont remplies automatiquement.',
+                  style: TextStyle(color: AppColors.muted),
+                ),
+                const SizedBox(height: 12),
+                FilledButton.icon(onPressed: _login, icon: const Icon(Icons.login), label: const Text('Se connecter ou créer un compte')),
+              ],
+            ),
+          )
+        else if (!_loaded)
+          const Padding(
+            padding: EdgeInsets.all(24),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else ...[
+          SectionCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text('Passager principal', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _first,
+                        textCapitalization: TextCapitalization.words,
+                        decoration: const InputDecoration(labelText: 'Prénom'),
+                        onChanged: (v) => bind((d) => d.firstName = v),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextField(
+                        controller: _last,
+                        textCapitalization: TextCapitalization.words,
+                        decoration: const InputDecoration(labelText: 'Nom'),
+                        onChanged: (v) => bind((d) => d.lastName = v),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _phone,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    labelText: 'Téléphone',
+                    prefixIcon: const Icon(Icons.phone_outlined),
+                    errorText: booking.missingDetails.contains('téléphone') ? 'Indispensable : le chauffeur vous appelle si besoin' : null,
+                  ),
+                  onChanged: (v) => bind((d) => d.phone = v),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _email,
+                  readOnly: true,
+                  decoration: const InputDecoration(labelText: 'E-mail (celui du compte)', prefixIcon: Icon(Icons.mail_outline)),
+                ),
+              ],
+            ),
+          ),
+          if (terminal != null) ...[
+            const SizedBox(height: 12),
+            SectionCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    terminal == 'station' ? (atPickup ? 'Arrivée en gare' : 'Départ en train') : (atPickup ? 'Arrivée à l’aéroport' : 'Départ en avion'),
+                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                  ),
+                  Text(
+                    booking.signNeeded
+                        ? 'Le chauffeur suit votre arrivée et vous attend avec une pancarte. Facultatif.'
+                        : 'Le chauffeur connaît votre vol ou train pour vous déposer à temps. Facultatif.',
+                    style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _transport,
+                    textCapitalization: TextCapitalization.characters,
+                    maxLength: 20,
+                    decoration: InputDecoration(
+                      labelText: terminal == 'station' ? 'Numéro de train' : 'Numéro de vol',
+                      counterText: '',
+                      prefixIcon: Icon(terminal == 'station' ? Icons.train : (atPickup ? Icons.flight_land : Icons.flight_takeoff)),
+                    ),
+                    onChanged: (v) => bind((d) => d.transportNumber = v),
+                  ),
+                  if (booking.signNeeded) ...[
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: _sign,
+                      maxLength: 80,
+                      decoration: const InputDecoration(labelText: 'Nom sur la pancarte', counterText: '', prefixIcon: Icon(Icons.badge_outlined)),
+                      onChanged: (v) => bind((d) => d.signName = v),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          SectionCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text('Réductions', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                const SizedBox(height: 8),
+                if (booking.promoCode != null)
+                  Row(
+                    children: [
+                      const Icon(Icons.verified, color: AppColors.success),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '${booking.promoCode} · ${booking.promoName} · −${money(booking.promoDiscount)}',
+                          style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      TextButton(onPressed: booking.removePromo, child: const Text('Retirer')),
+                    ],
+                  )
+                else
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _promo,
+                          textCapitalization: TextCapitalization.characters,
+                          onChanged: (_) => setState(() {}),
+                          decoration: const InputDecoration(labelText: 'Code promo', prefixIcon: Icon(Icons.local_offer_outlined)),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton(
+                        style: OutlinedButton.styleFrom(minimumSize: const Size(0, 52)),
+                        onPressed: booking.busy || _promo.text.trim().isEmpty ? null : () => booking.applyPromo(_promo.text),
+                        child: const Text('Appliquer'),
+                      ),
+                    ],
+                  ),
+                if (booking.creditBalance > 0)
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: booking.useCredit,
+                    onChanged: (v) => bind((d) => d.useCredit = v ?? false),
+                    title: const Text('Utiliser mon avoir'),
+                    subtitle: Text('${money(booking.creditBalance)} disponibles'),
+                  ),
+              ],
+            ),
+          ),
+        ],
+        const SizedBox(height: 12),
+        SectionCard(
+          color: AppColors.brandSoft,
+          child: Column(
+            children: [
+              _Line('${booking.offer!.name}${booking.roundTrip ? ' · aller-retour' : ''}', money(booking.offer!.price)),
+              if (booking.babySeats + booking.boosterSeats > 0)
+                _Line('Équipements enfant (${booking.babySeats + booking.boosterSeats})', money(booking.total - booking.offer!.price)),
+              if (split.promo > 0) _Line('Code promo', '−${money(split.promo)}', color: AppColors.success),
+              if (split.credit > 0) _Line('Avoir', '−${money(split.credit)}', color: AppColors.success),
+              const Divider(),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text('Total TTC', style: TextStyle(fontWeight: FontWeight.w700)),
+                  ),
+                  Text(
+                    money(split.due),
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.brand),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        if (signedIn && _loaded && booking.missingDetails.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Text(
+              'Pour confirmer, complétez : ${booking.missingDetails.join(', ')}.',
+              style: const TextStyle(color: AppColors.accent, fontWeight: FontWeight.w600),
+            ),
+          ),
+        _errorBox(booking.error),
+        const SizedBox(height: 12),
+        _primary(
+          label: 'Confirmer la réservation',
+          icon: Icons.check,
+          busy: booking.busy,
+          onPressed: booking.canConfirm(signedIn) && _loaded ? () => _confirm(context) : null,
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'En confirmant, vous acceptez nos CGV et notre politique de confidentialité.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: AppColors.muted, fontSize: 12),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _confirm(BuildContext context) async {
+    final booking = context.read<BookingController>();
+    await booking.confirm(signedIn: true);
+    if (!context.mounted) return;
+    if (booking.error == SessionExpired().message) context.read<AuthController>().expired();
+  }
+}
+
+class _Line extends StatelessWidget {
+  const _Line(this.label, this.value, {this.color});
+
+  final String label;
+  final String value;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 3),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(label, style: TextStyle(color: color)),
+        ),
+        Text(
+          value,
+          style: TextStyle(color: color, fontWeight: FontWeight.w600),
+        ),
+      ],
+    ),
+  );
+}
+
+// ── Étape 4 : confirmation ─────────────────────────────────────────────────────
+class _DoneStep extends StatefulWidget {
+  const _DoneStep({super.key, required this.onShowRides});
+
+  final VoidCallback onShowRides;
+
+  @override
+  State<_DoneStep> createState() => _DoneStepState();
+}
+
+class _DoneStepState extends State<_DoneStep> {
+  bool _paid = false;
+  bool _paying = false;
+
+  Future<void> _simulatePayment(Ride ride) async {
+    setState(() => _paying = true);
+    try {
+      await context.read<BookingController>().api.simulatePayment(ride.reference);
+      if (mounted) setState(() => _paid = true);
+    } catch (error) {
+      if (mounted) handleError(context, error);
+    } finally {
+      if (mounted) setState(() => _paying = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final booking = context.watch<BookingController>();
+    final ride = booking.created!;
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(color: AppColors.brand, borderRadius: BorderRadius.circular(8)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const CircleAvatar(
+                radius: 24,
+                backgroundColor: Colors.white,
+                child: Icon(Icons.check, color: AppColors.brand, size: 28),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Merci, votre réservation est enregistrée',
+                style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Référence ${ride.reference.substring(0, ride.reference.length.clamp(0, 12))} · confirmation envoyée par e-mail.',
+                style: const TextStyle(color: Color(0xFFE3E8FF)),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        SectionCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              RouteLines(pickup: ride.pickup, destination: ride.destination),
+              const SizedBox(height: 8),
+              Text('${dayLabel(ride.departureAt)} à ${time(ride.departureAt)}', style: const TextStyle(color: AppColors.muted)),
+              if (ride.transportNumber != null || ride.signName != null)
+                Text(
+                  [
+                    if (ride.transportNumber != null) 'Vol / train ${ride.transportNumber}',
+                    if (ride.signName != null) 'Pancarte : ${ride.signName}',
+                  ].join(' · '),
+                  style: const TextStyle(color: AppColors.muted),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        _TotalBar(total: ride.amountDue, label: ride.amountDue == 0 ? 'Réglé par votre avoir' : 'Montant à régler'),
+        const SizedBox(height: 12),
+        if (_paid)
+          const SectionCard(
+            color: AppColors.successSoft,
+            child: Text(
+              'Paiement simulé : la course est marquée payée.',
+              style: TextStyle(color: AppColors.success, fontWeight: FontWeight.w600),
+            ),
+          )
+        else if (ride.amountDue > 0) ...[
+          const SectionCard(color: AppColors.accentSoft, child: Text('Le paiement en ligne sera disponible prochainement. Aucun paiement n’a été effectué.')),
+          if (kDebugMode) ...[
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: _paying ? null : () => _simulatePayment(ride),
+              icon: const Icon(Icons.credit_card),
+              label: const Text('Payer maintenant (simulation)'),
+            ),
+          ],
+        ],
+        const SizedBox(height: 16),
+        const Text('Et maintenant ?', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+        const SizedBox(height: 8),
+        for (final (index, title, text) in const [
+          (1, 'Attribution d’un chauffeur', 'Vous recevez son nom et son véhicule par e-mail dès qu’il accepte.'),
+          (2, 'Rappel la veille', 'Pour les courses réservées plus de 24 h à l’avance.'),
+          (3, 'Annulation gratuite', 'Jusqu’à 24 h avant le départ, depuis « Mes courses ».'),
+        ])
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: CircleAvatar(
+              radius: 14,
+              backgroundColor: AppColors.brandSoft,
+              child: Text(
+                '$index',
+                style: const TextStyle(color: AppColors.brand, fontWeight: FontWeight.w800),
+              ),
+            ),
+            title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+            subtitle: Text(text),
+          ),
+        const SizedBox(height: 12),
+        _primary(
+          label: 'Voir mes courses',
+          onPressed: () {
+            booking.restart();
+            widget.onShowRides();
+          },
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton(onPressed: booking.restart, child: const Text('Nouvelle réservation')),
+      ],
+    );
+  }
+}
