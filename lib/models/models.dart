@@ -17,6 +17,8 @@ class Place {
   final String address;
   final double? lat;
   final double? lng;
+
+  Map<String, dynamic> toJson() => {'place_id': placeId, 'address': address, 'lat': lat, 'lng': lng};
 }
 
 class PlaceSuggestion {
@@ -105,6 +107,8 @@ class Ride {
         paymentStatus = json['payment_status'] as String,
         pickup = json['pickup_address'] as String,
         destination = json['destination_address'] as String,
+        pickupPlaceId = json['pickup_place_id'] as String?,
+        destinationPlaceId = json['destination_place_id'] as String?,
         departureAt = _date(json['departure_at'])!,
         returnAt = _date(json['return_at']),
         quotedPrice = _num(json['quoted_price']),
@@ -127,6 +131,9 @@ class Ride {
   final String paymentStatus;
   final String pickup;
   final String destination;
+  // Lieux Google du trajet : pour réserver le retour ou refaire le trajet en un geste.
+  final String? pickupPlaceId;
+  final String? destinationPlaceId;
   final DateTime departureAt;
   final DateTime? returnAt;
   final double quotedPrice;

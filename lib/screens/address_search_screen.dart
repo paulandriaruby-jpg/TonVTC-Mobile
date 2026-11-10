@@ -5,15 +5,18 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../api/client_api.dart';
+import '../booking/recent_places.dart';
 import '../models/models.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 
 // Recherche d'une adresse (suggestions Google Places renvoyées par l'API). Renvoie le lieu choisi.
 class AddressSearchScreen extends StatefulWidget {
-  const AddressSearchScreen({super.key, required this.title});
+  const AddressSearchScreen({super.key, required this.title, this.initialQuery});
 
   final String title;
+  // Recherche lancée à l'ouverture (destinations fréquentes de l'accueil).
+  final String? initialQuery;
 
   @override
   State<AddressSearchScreen> createState() => _AddressSearchScreenState();
@@ -27,6 +30,21 @@ class _AddressSearchScreenState extends State<AddressSearchScreen> {
   List<PlaceSuggestion> _results = [];
   bool _loading = false;
   String? _error;
+  final _recent = RecentPlaces();
+  List<Place> _recentPlaces = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _recent.load().then((places) {
+      if (mounted) setState(() => _recentPlaces = places);
+    });
+    final query = widget.initialQuery;
+    if (query != null && query.isNotEmpty) {
+      _input.text = query;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _search(query));
+    }
+  }
 
   @override
   void dispose() {
@@ -60,6 +78,7 @@ class _AddressSearchScreenState extends State<AddressSearchScreen> {
     setState(() => _loading = true);
     try {
       final place = await context.read<ClientApi>().place(suggestion.placeId, _sessionToken);
+      await _recent.add(place);
       if (mounted) Navigator.of(context).pop(place);
     } catch (error) {
       if (mounted) {
@@ -89,6 +108,29 @@ class _AddressSearchScreenState extends State<AddressSearchScreen> {
           ),
         ),
         if (_error != null) Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Text(_error!, style: const TextStyle(color: AppColors.danger))),
+        // Champ vide : les dernières adresses choisies.
+        if (_results.isEmpty && _input.text.trim().length < 3 && _recentPlaces.isNotEmpty)
+          Expanded(
+            child: ListView(children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 4, 16, 8),
+                child: Text('Adresses récentes', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.muted, fontSize: 13)),
+              ),
+              for (final place in _recentPlaces) ...[
+                ListTile(
+                  tileColor: Colors.white,
+                  leading: const Icon(Icons.history, color: AppColors.brand),
+                  title: Text(place.address, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600)),
+                  onTap: () async {
+                    await _recent.add(place);
+                    if (context.mounted) Navigator.of(context).pop(place);
+                  },
+                ),
+                const Divider(height: 1),
+              ],
+            ]),
+          )
+        else
         Expanded(
           child: ListView.separated(
             itemCount: _results.length,

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../api/client_api.dart';
 import '../auth/auth_controller.dart';
+import '../booking/booking_controller.dart';
 import '../models/models.dart';
 import '../theme.dart';
 import '../widgets/pay_button.dart';
@@ -15,7 +16,10 @@ import 'login_sheet.dart';
 // Mes courses : à venir et passées ; détail avec le chauffeur confirmé, l'annulation (frais affichés avant),
 // la note du chauffeur une fois la course terminée et un message à l'équipe.
 class RidesScreen extends StatefulWidget {
-  const RidesScreen({super.key});
+  const RidesScreen({super.key, this.onBook});
+
+  // Retour à l'onglet Réserver, après avoir pré-rempli un trajet depuis une course.
+  final VoidCallback? onBook;
 
   @override
   State<RidesScreen> createState() => _RidesScreenState();
@@ -81,7 +85,7 @@ class _RidesScreenState extends State<RidesScreen> {
             child: InkWell(
               borderRadius: BorderRadius.circular(8),
               onTap: () async {
-                await Navigator.of(context).push(MaterialPageRoute(builder: (_) => RideDetailScreen(rideId: ride.id!)));
+                await Navigator.of(context).push(MaterialPageRoute(builder: (_) => RideDetailScreen(rideId: ride.id!, onBook: widget.onBook)));
                 await _load();
               },
               child: Padding(
@@ -123,9 +127,10 @@ extension on EmptyState {
 }
 
 class RideDetailScreen extends StatefulWidget {
-  const RideDetailScreen({super.key, required this.rideId});
+  const RideDetailScreen({super.key, required this.rideId, this.onBook});
 
   final int rideId;
+  final VoidCallback? onBook;
 
   @override
   State<RideDetailScreen> createState() => _RideDetailScreenState();
@@ -149,6 +154,15 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
     }
   }
 
+  // Retour (départ et arrivée inversés) ou même trajet : pré-remplit la réservation et ouvre l'onglet Réserver.
+  void _rebook(Ride ride, {required bool reverse}) {
+    final pickup = Place(placeId: ride.pickupPlaceId!, address: ride.pickup);
+    final destination = Place(placeId: ride.destinationPlaceId!, address: ride.destination);
+    context.read<BookingController>().prefill(from: reverse ? destination : pickup, to: reverse ? pickup : destination);
+    Navigator.of(context).pop();
+    widget.onBook?.call();
+  }
+
   // Annulation : les frais éventuels sont annoncés avant de confirmer.
   Future<void> _cancel() async {
     final api = context.read<ClientApi>();
@@ -161,8 +175,8 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
           title: const Text('Annuler la course ?'),
           content: Text(preview.fee > 0 ? 'Des frais de ${money(preview.fee)} s\'appliquent.' : 'L\'annulation est gratuite.'),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Retour')),
-            FilledButton(style: FilledButton.styleFrom(minimumSize: const Size(0, 44), backgroundColor: AppColors.danger), onPressed: () => Navigator.pop(context, true), child: const Text('Annuler la course')),
+            const DialogCancel('Retour'),
+            const DialogConfirm('Annuler la course', danger: true),
           ],
         ),
       );
@@ -301,9 +315,17 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
                   const SizedBox(height: 12),
                   OutlinedButton.icon(onPressed: () => _write(ride), icon: const Icon(Icons.chat_bubble_outline), label: const Text('Signaler un problème ou nous écrire')),
                 ],
+                if (ride.pickupPlaceId != null && ride.destinationPlaceId != null && widget.onBook != null) ...[
+                  const SizedBox(height: 12),
+                  Row(children: [
+                    Expanded(child: OutlinedButton.icon(onPressed: () => _rebook(ride, reverse: true), icon: const Icon(Icons.swap_horiz), label: const Text('Réserver le retour'))),
+                    const SizedBox(width: 10),
+                    Expanded(child: OutlinedButton.icon(onPressed: () => _rebook(ride, reverse: false), icon: const Icon(Icons.replay), label: const Text('Refaire ce trajet'))),
+                  ]),
+                ],
                 if (ride.canCancel) ...[
                   const SizedBox(height: 20),
-                  OutlinedButton.icon(style: OutlinedButton.styleFrom(foregroundColor: AppColors.danger), onPressed: _cancel, icon: const Icon(Icons.close), label: const Text('Annuler la course')),
+                  OutlinedButton.icon(style: dangerOutline(), onPressed: _cancel, icon: const Icon(Icons.close), label: const Text('Annuler la course')),
                 ],
               ]),
             ),

@@ -108,7 +108,7 @@ class _AccountScreenState extends State<AccountScreen> {
                   const _LegalTile(),
                   const SizedBox(height: 20),
                   OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(foregroundColor: AppColors.danger),
+                    style: dangerOutline(),
                     onPressed: auth.logout,
                     icon: const Icon(Icons.logout),
                     label: const Text('Se déconnecter de ce téléphone'),

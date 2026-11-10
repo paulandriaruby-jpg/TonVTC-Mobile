@@ -79,6 +79,15 @@ class BookingController extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Nouveau trajet pré-rempli (retour d'une course, ou même trajet) : on repart de l'étape Trajet, date à choisir.
+  void prefill({required Place from, required Place to}) {
+    restart();
+    update((draft) {
+      draft.pickup = from;
+      draft.destination = to;
+    });
+  }
+
   void swap() => update((draft) {
         final previous = draft.pickup;
         draft.pickup = draft.destination;

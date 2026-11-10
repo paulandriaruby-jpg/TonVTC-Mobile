@@ -19,7 +19,7 @@ class _HomeShellState extends State<HomeShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: switch (_tab) {
-        1 => const RidesScreen(),
+        1 => RidesScreen(onBook: () => setState(() => _tab = 0)),
         2 => const AccountScreen(),
         _ => BookingScreen(onShowRides: () => setState(() => _tab = 1)),
       },

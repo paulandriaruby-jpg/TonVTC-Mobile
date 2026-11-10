@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../api/api_client.dart';
@@ -29,17 +30,9 @@ class BookingScreen extends StatelessWidget {
       canPop: booking.step == BookingStep.trip || booking.step == BookingStep.done,
       onPopInvokedWithResult: (popped, _) => popped ? null : booking.back(),
       child: Scaffold(
-        appBar: AppBar(
+        appBar: booking.step == BookingStep.trip ? null : AppBar(
           leading: booking.step == BookingStep.vehicle || booking.step == BookingStep.customer ? BackButton(onPressed: booking.back) : null,
-          title: booking.step == BookingStep.trip
-              ? const Row(
-                  children: [
-                    Logo(size: 30),
-                    SizedBox(width: 10),
-                    Text('Réserver', style: TextStyle(fontWeight: FontWeight.w800)),
-                  ],
-                )
-              : Text(['Trajet', 'Véhicule', 'Coordonnées', 'Réservation enregistrée'][index], style: const TextStyle(fontWeight: FontWeight.w800)),
+          title: Text(['Trajet', 'Véhicule', 'Coordonnées', 'Réservation enregistrée'][index], style: const TextStyle(fontWeight: FontWeight.w800)),
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(4),
             child: LinearProgressIndicator(value: (index + 1) / 4, minHeight: 4, color: AppColors.brand, backgroundColor: AppColors.surface),
@@ -48,7 +41,8 @@ class BookingScreen extends StatelessWidget {
         body: AnimatedSwitcher(
           duration: const Duration(milliseconds: 200),
           child: switch (booking.step) {
-            BookingStep.trip => const _TripStep(key: ValueKey('trip')),
+            // Icônes de la barre d'état en blanc sur la photo de l'accueil.
+            BookingStep.trip => const AnnotatedRegion<SystemUiOverlayStyle>(value: SystemUiOverlayStyle.light, child: _TripStep(key: ValueKey('trip'))),
             BookingStep.vehicle => const _VehicleStep(key: ValueKey('vehicle')),
             BookingStep.customer => const _CustomerStep(key: ValueKey('customer')),
             BookingStep.done => _DoneStep(key: const ValueKey('done'), onShowRides: onShowRides),
@@ -88,19 +82,33 @@ Widget _primary({required String label, required VoidCallback? onPressed, bool b
 );
 
 // -- Étape 1 : trajet -----------------------------------------------------------
+// Accueil de l'app : photo en grand, carte de réservation posée dessus (aller simple / aller-retour, adresses reliées
+// par un trait, date et heure séparées), bouton orange, puis destinations fréquentes et garanties.
 class _TripStep extends StatelessWidget {
   const _TripStep({super.key});
 
-  Future<void> _pickAddress(BuildContext context, bool isPickup) async {
-    final place = await Navigator.of(context)
-        .push<Place>(MaterialPageRoute(builder: (_) => AddressSearchScreen(title: isPickup ? 'Adresse de départ' : 'Adresse d\'arrivée')));
+  // Destinations fréquentes : ouvrent la recherche d'adresse déjà remplie (le lieu exact vient de Google).
+  static const _popular = [
+    (Icons.flight_takeoff, 'Aéroport de Genève'),
+    (Icons.train_outlined, 'Gare d\'Annecy'),
+    (Icons.train_outlined, 'Gare de Genève Cornavin'),
+    (Icons.downhill_skiing, 'Chamonix'),
+  ];
+
+  Future<void> _pickAddress(BuildContext context, bool isPickup, {String? query}) async {
+    final place = await Navigator.of(context).push<Place>(
+      MaterialPageRoute(builder: (_) => AddressSearchScreen(title: isPickup ? 'Adresse de départ' : 'Adresse d\'arrivée', initialQuery: query)),
+    );
     if (place == null || !context.mounted) return;
     context.read<BookingController>().update((draft) => isPickup ? draft.pickup = place : draft.destination = place);
   }
 
-  Future<void> _pickDate(BuildContext context, {required bool isReturn}) async {
+  DateTime _current(BookingController booking, bool isReturn) =>
+      isReturn ? (booking.returning ?? booking.departure.add(const Duration(hours: 3))) : booking.departure;
+
+  Future<void> _pickDay(BuildContext context, {required bool isReturn}) async {
     final booking = context.read<BookingController>();
-    final current = isReturn ? (booking.returning ?? booking.departure.add(const Duration(hours: 3))) : booking.departure;
+    final current = _current(booking, isReturn);
     final first = isReturn ? booking.departure : booking.earliestDeparture;
     final date = await showDatePicker(
       context: context,
@@ -110,156 +118,336 @@ class _TripStep extends StatelessWidget {
       helpText: isReturn ? 'Date du retour' : 'Date du départ',
     );
     if (date == null || !context.mounted) return;
-    final time = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(current), helpText: 'Heure (par quart d\'heure)');
-    if (time == null || !context.mounted) return;
-    final chosen = roundToQuarter(DateTime(date.year, date.month, date.day, time.hour, time.minute));
+    final chosen = roundToQuarter(DateTime(date.year, date.month, date.day, current.hour, current.minute));
+    booking.update((draft) => isReturn ? draft.returning = chosen : draft.departure = chosen);
+  }
+
+  Future<void> _pickTime(BuildContext context, {required bool isReturn}) async {
+    final booking = context.read<BookingController>();
+    final current = _current(booking, isReturn);
+    final picked = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(current), helpText: 'Heure (par quart d\'heure)');
+    if (picked == null || !context.mounted) return;
+    final chosen = roundToQuarter(DateTime(current.year, current.month, current.day, picked.hour, picked.minute));
     booking.update((draft) => isReturn ? draft.returning = chosen : draft.departure = chosen);
   }
 
   @override
   Widget build(BuildContext context) {
     final booking = context.watch<BookingController>();
+    final top = MediaQuery.of(context).padding.top;
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.zero,
       children: [
-        const _Banner(),
-        const SizedBox(height: 16),
-        SegmentedButton<bool>(
-          segments: const [
-            ButtonSegment(value: false, label: Text('Aller simple')),
-            ButtonSegment(value: true, label: Text('Aller-retour')),
-          ],
-          selected: {booking.roundTrip},
-          onSelectionChanged: (value) => booking.update((draft) {
-            draft.roundTrip = value.first;
-            if (draft.roundTrip) draft.returning ??= draft.departure.add(const Duration(hours: 3));
-          }),
-        ),
-        const SizedBox(height: 14),
-        SectionCard(
-          padding: EdgeInsets.zero,
-          child: Column(
-            children: [
-              _FieldTile(
-                icon: Icons.trip_origin,
-                label: 'Départ',
-                value: booking.pickup?.address,
-                placeholder: 'Adresse de départ',
-                onTap: () => _pickAddress(context, true),
-              ),
-              const Divider(height: 1),
-              _FieldTile(
-                icon: Icons.place_outlined,
-                label: 'Arrivée',
-                value: booking.destination?.address,
-                placeholder: 'Adresse d\'arrivée',
-                onTap: () => _pickAddress(context, false),
-                trailing: booking.pickup != null || booking.destination != null
-                    ? IconButton(tooltip: 'Inverser', icon: const Icon(Icons.swap_vert), onPressed: booking.swap)
-                    : null,
-              ),
-              const Divider(height: 1),
-              _FieldTile(
-                icon: Icons.event,
-                label: 'Départ le',
-                value: '${dayLabel(booking.departure)} à ${time(booking.departure)}',
-                onTap: () => _pickDate(context, isReturn: false),
-              ),
-              if (booking.roundTrip) ...[
-                const Divider(height: 1),
-                _FieldTile(
-                  icon: Icons.event_repeat,
-                  label: 'Retour le',
-                  value: booking.returning == null ? null : '${dayLabel(booking.returning!)} à ${time(booking.returning!)}',
-                  placeholder: 'Date et heure du retour',
-                  onTap: () => _pickDate(context, isReturn: true),
-                ),
-              ],
-            ],
-          ),
-        ),
-        _errorBox(booking.error),
-        const SizedBox(height: 16),
-        _primary(label: 'VOIR LES PRIX', busy: booking.busy, onPressed: booking.showPrices),
-        const SizedBox(height: 18),
-        for (final (icon, text) in const [
-          (Icons.lock_outline, 'Prix fixe, il ne change plus après la réservation'),
-          (Icons.verified_user_outlined, 'Chauffeurs et véhicules vérifiés'),
-          (Icons.event_busy_outlined, 'Annulation gratuite jusqu\'à 24 h avant'),
-        ])
+        Stack(children: [
+          _Hero(height: 250 + top, top: top),
           Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Row(
-              children: [
-                Icon(icon, size: 18, color: AppColors.brand),
-                const SizedBox(width: 10),
-                Expanded(child: Text(text)),
-              ],
+            padding: EdgeInsets.fromLTRB(16, 190 + top, 16, 0),
+            child: Material(
+              color: Colors.white,
+              elevation: 6,
+              shadowColor: const Color(0x55041325),
+              borderRadius: BorderRadius.circular(16),
+              child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                _TripToggle(roundTrip: booking.roundTrip, onChanged: (value) => booking.update((draft) {
+                  draft.roundTrip = value;
+                  if (draft.roundTrip) draft.returning ??= draft.departure.add(const Duration(hours: 3));
+                })),
+                const SizedBox(height: 14),
+                _AddressPair(
+                  pickup: booking.pickup?.address,
+                  destination: booking.destination?.address,
+                  onPickup: () => _pickAddress(context, true),
+                  onDestination: () => _pickAddress(context, false),
+                  onSwap: booking.pickup != null || booking.destination != null ? booking.swap : null,
+                ),
+                const SizedBox(height: 12),
+                _WhenRow(
+                  label: 'Départ',
+                  at: booking.departure,
+                  onDay: () => _pickDay(context, isReturn: false),
+                  onTime: () => _pickTime(context, isReturn: false),
+                ),
+                if (booking.roundTrip) ...[
+                  const SizedBox(height: 10),
+                  _WhenRow(
+                    label: 'Retour',
+                    at: booking.returning,
+                    onDay: () => _pickDay(context, isReturn: true),
+                    onTime: () => _pickTime(context, isReturn: true),
+                  ),
+                ],
+                _errorBox(booking.error),
+                const SizedBox(height: 16),
+                _primary(label: 'Voir les prix', busy: booking.busy, onPressed: booking.showPrices),
+              ]),
+              ),
             ),
           ),
+        ]),
+        const SizedBox(height: 24),
+        const _SectionTitle('Où allez-vous ?'),
+        SizedBox(
+          height: 44,
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            scrollDirection: Axis.horizontal,
+            itemCount: _popular.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 8),
+            itemBuilder: (context, index) {
+              final (icon, label) = _popular[index];
+              return ActionChip(
+                avatar: Icon(icon, size: 18, color: AppColors.brand),
+                label: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+                backgroundColor: Colors.white,
+                side: const BorderSide(color: AppColors.line),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                onPressed: () => _pickAddress(context, false, query: label),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 24),
+        const _SectionTitle('Pourquoi TonVTC'),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(children: [
+            for (final (icon, title, text, color, background) in const [
+              (Icons.lock_outline, 'Prix fixe', 'Connu avant de réserver, il ne change plus, même dans les bouchons.', AppColors.brand, AppColors.brandSoft),
+              (Icons.verified_user_outlined, 'Chauffeurs vérifiés', 'Carte VTC, permis, assurance et véhicule contrôlés par notre équipe.', AppColors.success, AppColors.successSoft),
+              (Icons.event_available_outlined, 'Annulation gratuite', 'Jusqu\'à 24 h avant le départ, depuis l\'onglet Courses.', AppColors.accent, AppColors.accentSoft),
+            ])
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: SectionCard(
+                  child: Row(children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(12)),
+                      child: Icon(icon, color: color),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                        const SizedBox(height: 2),
+                        Text(text, style: const TextStyle(color: AppColors.muted, fontSize: 13, height: 1.35)),
+                      ]),
+                    ),
+                  ]),
+                ),
+              ),
+          ]),
+        ),
+        const SizedBox(height: 16),
       ],
     );
   }
 }
 
-// Bandeau d'accueil : la berline de nuit au-dessus d'Annecy, assombrie en bas pour le texte.
-class _Banner extends StatelessWidget {
-  const _Banner();
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.text);
+
+  final String text;
 
   @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: SizedBox(
-        height: 190,
-        child: Stack(fit: StackFit.expand, children: [
-          Image.asset('assets/images/accueil-nuit.webp', fit: BoxFit.cover, alignment: const Alignment(0, .4)),
-          const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0x1A041325), Color(0xD9041325)],
-                stops: [.3, 1],
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+    child: Text(text, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.ink)),
+  );
+}
+
+// Photo de nuit au-dessus d'Annecy, assombrie, avec le logo et l'accroche ; la carte de réservation la recouvre en bas.
+class _Hero extends StatelessWidget {
+  const _Hero({required this.height, required this.top});
+
+  final double height;
+  final double top;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    height: height,
+    child: Stack(fit: StackFit.expand, children: [
+      Image.asset('assets/images/accueil-nuit.webp', fit: BoxFit.cover, alignment: const Alignment(0, .5)),
+      const DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0x99041325), Color(0x33041325), Color(0xCC041325)],
+            stops: [0, .45, 1],
+          ),
+        ),
+      ),
+      Padding(
+        padding: EdgeInsets.fromLTRB(20, top + 14, 20, 0),
+        child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Logo(size: 34),
+            SizedBox(width: 10),
+            Text('TonVTC', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+          ]),
+          SizedBox(height: 22),
+          Text('Où allons-nous ?', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800, height: 1.1)),
+          SizedBox(height: 6),
+          Text('Haute-Savoie et Genève, au prix fixé à l\'avance.', style: TextStyle(color: Color(0xFFD3D9E4), fontSize: 15)),
+        ]),
+      ),
+    ]),
+  );
+}
+
+// Aller simple / aller-retour : deux pastilles, la choisie en bleu nuit (comme sur le site).
+class _TripToggle extends StatelessWidget {
+  const _TripToggle({required this.roundTrip, required this.onChanged});
+
+  final bool roundTrip;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(4),
+    decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12)),
+    child: Row(children: [
+      for (final (value, label) in const [(false, 'Aller simple'), (true, 'Aller-retour')])
+        Expanded(
+          child: Semantics(
+            selected: roundTrip == value,
+            button: true,
+            child: GestureDetector(
+              onTap: () => onChanged(value),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(color: roundTrip == value ? AppColors.ink : Colors.transparent, borderRadius: BorderRadius.circular(9)),
+                child: Text(label, style: TextStyle(fontWeight: FontWeight.w700, color: roundTrip == value ? Colors.white : AppColors.ink)),
               ),
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.all(18),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.end, children: [
-              Text('Réservez votre chauffeur', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
-              SizedBox(height: 4),
-              Text('Prix fixe connu à l\'avance, chauffeur professionnel confirmé.', style: TextStyle(color: Color(0xFFD3D9E4))),
+        ),
+    ]),
+  );
+}
+
+// Départ et arrivée reliés par un trait (rond puis carré, comme sur le site), bouton pour inverser à droite.
+class _AddressPair extends StatelessWidget {
+  const _AddressPair({required this.pickup, required this.destination, required this.onPickup, required this.onDestination, this.onSwap});
+
+  final String? pickup;
+  final String? destination;
+  final VoidCallback onPickup;
+  final VoidCallback onDestination;
+  final VoidCallback? onSwap;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    decoration: BoxDecoration(border: Border.all(color: AppColors.line, width: 1.5), borderRadius: BorderRadius.circular(12)),
+    child: Row(children: [
+      const SizedBox(width: 16),
+      Column(children: [
+        Container(width: 12, height: 12, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: AppColors.ink, width: 3))),
+        Container(width: 2, height: 38, color: AppColors.line),
+        Container(width: 12, height: 12, decoration: BoxDecoration(borderRadius: BorderRadius.circular(3), border: Border.all(color: AppColors.accent, width: 3))),
+      ]),
+      Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          _AddressLine(label: 'Départ', value: pickup, placeholder: 'D\'où partez-vous ?', onTap: onPickup),
+          const Divider(height: 1, indent: 12),
+          _AddressLine(label: 'Arrivée', value: destination, placeholder: 'Où allez-vous ?', onTap: onDestination),
+        ]),
+      ),
+      if (onSwap != null)
+        Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: IconButton.filledTonal(
+            tooltip: 'Inverser départ et arrivée',
+            style: IconButton.styleFrom(backgroundColor: AppColors.brandSoft, foregroundColor: AppColors.brand),
+            icon: const Icon(Icons.swap_vert),
+            onPressed: onSwap,
+          ),
+        )
+      else
+        const SizedBox(width: 12),
+    ]),
+  );
+}
+
+class _AddressLine extends StatelessWidget {
+  const _AddressLine({required this.label, required this.value, required this.placeholder, required this.onTap});
+
+  final String label;
+  final String? value;
+  final String placeholder;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label, style: const TextStyle(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 2),
+        Text(
+          value ?? placeholder,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: 16, color: value == null ? AppColors.muted : AppColors.ink, fontWeight: value == null ? FontWeight.w500 : FontWeight.w700),
+        ),
+      ]),
+    ),
+  );
+}
+
+// Date et heure en deux cases côte à côte (la date ouvre le calendrier, l'heure l'horloge).
+class _WhenRow extends StatelessWidget {
+  const _WhenRow({required this.label, required this.at, required this.onDay, required this.onTime});
+
+  final String label;
+  final DateTime? at;
+  final VoidCallback onDay;
+  final VoidCallback onTime;
+
+  @override
+  Widget build(BuildContext context) => Row(children: [
+    Expanded(flex: 3, child: _Box(icon: Icons.event, label: '$label le', value: at == null ? 'Choisir' : dayLabel(at!), onTap: onDay)),
+    const SizedBox(width: 10),
+    Expanded(flex: 2, child: _Box(icon: Icons.schedule, label: 'Heure', value: at == null ? '--:--' : time(at!), onTap: onTime)),
+  ]);
+}
+
+class _Box extends StatelessWidget {
+  const _Box({required this.icon, required this.label, required this.value, required this.onTap});
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: Colors.white,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: AppColors.line, width: 1.5)),
+    child: InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(children: [
+          Icon(icon, size: 20, color: AppColors.brand),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(label, style: const TextStyle(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w600)),
+              Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
             ]),
           ),
         ]),
       ),
-    );
-  }
-}
-
-class _FieldTile extends StatelessWidget {
-  const _FieldTile({required this.icon, required this.label, required this.onTap, this.value, this.placeholder, this.trailing});
-
-  final IconData icon;
-  final String label;
-  final String? value;
-  final String? placeholder;
-  final VoidCallback onTap;
-  final Widget? trailing;
-
-  @override
-  Widget build(BuildContext context) => ListTile(
-    onTap: onTap,
-    leading: Icon(icon, color: AppColors.brand),
-    title: Text(label, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
-    subtitle: Text(
-      value ?? placeholder ?? '',
-      maxLines: 2,
-      overflow: TextOverflow.ellipsis,
-      style: TextStyle(fontSize: 16, color: value == null ? AppColors.muted : AppColors.ink, fontWeight: value == null ? FontWeight.w400 : FontWeight.w600),
     ),
-    trailing: trailing ?? const Icon(Icons.chevron_right),
   );
 }
 
