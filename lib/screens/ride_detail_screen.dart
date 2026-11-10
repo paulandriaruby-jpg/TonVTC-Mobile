@@ -279,7 +279,7 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
       RideStep.completed => [
           SectionCard(
             color: AppColors.successSoft,
-            child: Text(ride.payoutStatus == 'paid' ? 'Course terminée - gain versé.' : 'Course terminée - le gain sera versé avec le relevé mensuel, après le paiement du client.',
+            child: Text(ride.payoutStatus == 'paid' ? 'Course terminée - gain versé.' : 'Course terminée - le gain sera versé chaque semaine, après le paiement du client.',
                 style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.w600)),
           ),
         ],

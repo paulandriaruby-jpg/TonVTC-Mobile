@@ -7,7 +7,7 @@ import '../theme.dart';
 import '../util/format.dart';
 import '../widgets/common.dart';
 
-// Gains : mois en cours, à recevoir, mois précédents et relevés mensuels (même calcul que "Mes gains" sur le site).
+// Gains : mois en cours, à recevoir, mois précédents et relevés de la semaine (même calcul que "Mes gains" sur le site).
 class EarningsScreen extends StatefulWidget {
   const EarningsScreen({super.key});
 
@@ -46,7 +46,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                 _hero(earnings),
                 const SizedBox(height: 12),
                 Row(children: [
-                  Expanded(child: _tile('À recevoir', money(earnings.toReceive), 'versé avec le relevé mensuel', AppColors.accentSoft)),
+                  Expanded(child: _tile('À recevoir', money(earnings.toReceive), 'versé chaque semaine', AppColors.accentSoft)),
                   const SizedBox(width: 12),
                   Expanded(child: _tile('Attente client', money(earnings.awaitingClient), 'dû dès que le client a payé', Colors.white)),
                 ]),
@@ -74,7 +74,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                 const Text('Relevés', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 8),
                 if (earnings.payouts.isEmpty)
-                  const SectionCard(child: Text('Aucun relevé pour l\'instant : il est établi chaque mois pour les courses terminées et payées.', style: TextStyle(color: AppColors.muted)))
+                  const SectionCard(child: Text('Aucun relevé pour l\'instant : il est établi chaque lundi pour les courses terminées et payées de la semaine passée.', style: TextStyle(color: AppColors.muted)))
                 else
                   ...earnings.payouts.map(_payout),
               ]),
