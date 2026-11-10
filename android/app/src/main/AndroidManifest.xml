@@ -4,6 +4,8 @@
         android:label="TonVTC"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <!-- Google Pay dans la fenêtre de paiement Stripe. -->
+        <meta-data android:name="com.google.android.gms.wallet.api.enabled" android:value="true" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

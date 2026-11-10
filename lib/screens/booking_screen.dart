@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -9,6 +8,7 @@ import '../booking/rules.dart';
 import '../models/models.dart';
 import '../legal/legal.dart';
 import '../theme.dart';
+import '../widgets/pay_button.dart';
 import '../util/format.dart';
 import '../widgets/common.dart';
 import '../widgets/logo.dart';
@@ -795,19 +795,6 @@ class _DoneStep extends StatefulWidget {
 
 class _DoneStepState extends State<_DoneStep> {
   bool _paid = false;
-  bool _paying = false;
-
-  Future<void> _simulatePayment(Ride ride) async {
-    setState(() => _paying = true);
-    try {
-      await context.read<BookingController>().api.simulatePayment(ride.reference);
-      if (mounted) setState(() => _paid = true);
-    } catch (error) {
-      if (mounted) handleError(context, error);
-    } finally {
-      if (mounted) setState(() => _paying = false);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -866,21 +853,16 @@ class _DoneStepState extends State<_DoneStep> {
           const SectionCard(
             color: AppColors.successSoft,
             child: Text(
-              'Paiement simulé : la course est marquée payée.',
+              'Paiement reçu, merci ! Votre course est proposée à nos chauffeurs.',
               style: TextStyle(color: AppColors.success, fontWeight: FontWeight.w600),
             ),
           )
-        else if (ride.amountDue > 0) ...[
-          const SectionCard(color: AppColors.accentSoft, child: Text('Le paiement en ligne sera disponible prochainement. Aucun paiement n\'a été effectué.')),
-          if (kDebugMode) ...[
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: _paying ? null : () => _simulatePayment(ride),
-              icon: const Icon(Icons.credit_card),
-              label: const Text('Payer maintenant (simulation)'),
-            ),
-          ],
-        ],
+        else if (ride.amountDue > 0)
+          SectionCard(
+            child: PayButton(api: booking.api, reference: ride.reference, amount: ride.amountDue, onPaid: () {
+              if (mounted) setState(() => _paid = true);
+            }),
+          ),
         const SizedBox(height: 16),
         const Text('Et maintenant ?', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
         const SizedBox(height: 8),

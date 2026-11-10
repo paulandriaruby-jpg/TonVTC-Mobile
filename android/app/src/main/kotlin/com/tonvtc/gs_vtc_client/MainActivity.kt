@@ -1,5 +1,6 @@
 package com.tonvtc.gs_vtc_client
 
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 
-class MainActivity : FlutterActivity()
+// FlutterFragmentActivity : nécessaire à la fenêtre de paiement Stripe (flutter_stripe).
+class MainActivity : FlutterFragmentActivity()

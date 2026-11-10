@@ -55,6 +55,14 @@ class ClientApi {
   Future<void> sendFeedback({required String category, required String body, int? bookingId}) =>
       client.post('/api/v1/feedbacks', {'category': category, 'body': body, 'booking_id': ?bookingId});
 
-  // TEMPORAIRE avant Systempay (développement uniquement ; refusé en production).
+  // Paiement Stripe dans l'app : de quoi ouvrir la fenêtre de paiement native (PaymentIntent de la course).
+  Future<PaymentSheetData> paymentSheet(String reference) async =>
+      PaymentSheetData.fromJson(await client.post('/api/v1/payments', {'reference': reference, 'mode': 'sheet'}) as Map<String, dynamic>);
+
+  // Après la fenêtre de paiement : état du paiement relu chez Stripe ("paid" quand c'est réglé).
+  Future<String> confirmPayment(String reference) async =>
+      ((await client.post('/api/v1/payments/confirm', {'reference': reference})) as Map<String, dynamic>)['payment_status'] as String;
+
+  // Tests uniquement (développement ; refusé en production) : marque la course payée sans Stripe.
   Future<void> simulatePayment(String reference) => client.post('/api/v1/payment_simulations', {'reference': reference});
 }

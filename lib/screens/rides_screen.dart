@@ -5,6 +5,7 @@ import '../api/client_api.dart';
 import '../auth/auth_controller.dart';
 import '../models/models.dart';
 import '../theme.dart';
+import '../widgets/pay_button.dart';
 import '../util/format.dart';
 import '../widgets/common.dart';
 import '../widgets/stars.dart';
@@ -279,9 +280,19 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
                     _line('Prix', money(ride.quotedPrice)),
                     if (ride.promoDiscount > 0) _line('Code promo', '-${money(ride.promoDiscount)}'),
                     if (ride.creditUsed > 0) _line('Avoir', '-${money(ride.creditUsed)}'),
-                    _line('Paiement', ride.paymentStatus == 'paid' ? 'Payée' : 'À régler : ${money(ride.amountDue)}'),
+                    _line('Paiement', switch (ride.paymentStatus) {
+                      'paid' => 'Payée',
+                      'refunded' => 'Remboursée',
+                      'partially_refunded' => 'Remboursement partiel',
+                      'payment_failed' => 'Refusé : ${money(ride.amountDue)} à régler',
+                      _ => 'À régler : ${money(ride.amountDue)}',
+                    }),
                   ]),
                 ),
+                if (ride.needsPayment) ...[
+                  const SizedBox(height: 12),
+                  SectionCard(child: PayButton(api: context.read<ClientApi>(), reference: ride.reference, amount: ride.amountDue, onPaid: _load)),
+                ],
                 if (ride.rating != null || ride.canRate) ...[
                   const SizedBox(height: 12),
                   _ratingCard(ride),

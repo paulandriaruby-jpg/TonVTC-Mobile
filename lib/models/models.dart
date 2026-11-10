@@ -145,6 +145,9 @@ class Ride {
   final bool canRate;
   final RideRating? rating;
 
+  // Reste à payer en ligne : la course n'est proposée aux chauffeurs qu'une fois payée.
+  bool get needsPayment => status != 'cancelled' && status != 'completed' && amountDue > 0 && (paymentStatus == 'awaiting_payment' || paymentStatus == 'payment_failed');
+
   String get statusLabel => switch (status) {
         'pending' => 'En attente d\'un chauffeur',
         'dispatched' => 'Chauffeur en cours d\'attribution',
@@ -173,3 +176,15 @@ const feedbackCategories = {
   'compliment': 'Compliment',
   'other': 'Autre',
 };
+
+// Fenêtre de paiement Stripe de l'app : secret du PaymentIntent et clé publiable (envoyés par l'API).
+class PaymentSheetData {
+  PaymentSheetData.fromJson(Map<String, dynamic> json)
+      : clientSecret = json['client_secret'] as String,
+        publishableKey = json['publishable_key'] as String,
+        merchantName = (json['merchant_name'] as String?) ?? 'TonVTC';
+
+  final String clientSecret;
+  final String publishableKey;
+  final String merchantName;
+}
