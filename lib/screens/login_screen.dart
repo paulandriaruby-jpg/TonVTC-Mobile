@@ -7,7 +7,6 @@ import '../auth/auth_controller.dart';
 import '../config.dart';
 import '../push/push_service.dart';
 import '../theme.dart';
-import '../widgets/logo.dart';
 
 // Connexion réservée aux chauffeurs partenaires, dans le style de la page de connexion du site : la berline sur la
 // route de montagne en haut, le formulaire dans une carte blanche. La session reste ouverte sur ce téléphone
@@ -174,7 +173,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-// La berline sur la route de montagne, assombrie en bas pour le texte (comme le panneau gauche du site).
+// La berline de nuit au-dessus d'Annecy, assombrie en bas pour le texte (comme le panneau gauche du site).
 class _Visual extends StatelessWidget {
   const _Visual({required this.height});
 
@@ -185,7 +184,7 @@ class _Visual extends StatelessWidget {
     return SizedBox(
       height: height,
       child: Stack(fit: StackFit.expand, children: [
-        Image.asset('assets/images/depart-montagne.webp', fit: BoxFit.cover, alignment: const Alignment(0, .2)),
+        Image.asset('assets/images/accueil-nuit.webp', fit: BoxFit.cover, alignment: const Alignment(0, .35)),
         const DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -201,11 +200,8 @@ class _Visual extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Row(children: [
-                Logo(size: 34),
-                SizedBox(width: 10),
-                Text('TonVTC', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
-              ]),
+              // Logo horizontal du kit, version fond sombre (fichier fourni, pas retapé dans une police).
+              Image.asset('assets/images/logo-reversed.png', height: 34, semanticLabel: 'TonVTC'),
               const Spacer(),
               const Text('VOTRE VTC EN SAVOIE', style: TextStyle(color: Color(0xFFC7D0FF), fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1)),
               const SizedBox(height: 6),

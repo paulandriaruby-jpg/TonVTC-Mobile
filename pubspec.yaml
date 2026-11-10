@@ -72,7 +72,8 @@ flutter:
 
   # Photo de l'écran de connexion (la même que sur le site).
   assets:
-    - assets/images/depart-montagne.webp
+    - assets/images/accueil-nuit.webp
+    - assets/images/logo-reversed.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:
