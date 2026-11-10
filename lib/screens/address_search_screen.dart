@@ -49,7 +49,7 @@ class _AddressSearchScreenState extends State<AddressSearchScreen> {
           });
         }
       } catch (error) {
-        if (mounted) setState(() => _error = 'Recherche d’adresses indisponible. Réessayez.');
+        if (mounted) setState(() => _error = 'Recherche d\'adresses indisponible. Réessayez.');
       } finally {
         if (mounted) setState(() => _loading = false);
       }
@@ -82,7 +82,7 @@ class _AddressSearchScreenState extends State<AddressSearchScreen> {
             textInputAction: TextInputAction.search,
             onChanged: _search,
             decoration: InputDecoration(
-              hintText: 'Adresse, gare, aéroport…',
+              hintText: 'Adresse, gare, aéroport...',
               prefixIcon: const Icon(Icons.search),
               suffixIcon: _loading ? const Padding(padding: EdgeInsets.all(14), child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))) : null,
             ),

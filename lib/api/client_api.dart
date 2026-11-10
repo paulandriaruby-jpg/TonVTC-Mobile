@@ -31,7 +31,7 @@ class ClientApi {
   Future<Profile> updateProfile({required String firstName, required String lastName, required String phone}) async =>
       Profile.fromJson(await client.patch('/api/v1/profile', {'first_name': firstName, 'last_name': lastName, 'phone': phone}) as Map<String, dynamic>);
 
-  // period : « upcoming » (à venir) ou « past » (terminées / annulées).
+  // period : "upcoming" (à venir) ou "past" (terminées / annulées).
   Future<List<Ride>> rides(String period) async {
     final data = await client.get('/api/v1/bookings', query: {'period': period, 'sort': 'departure_at', 'direction': period == 'upcoming' ? 'asc' : 'desc', 'per_page': '50'})
         as Map<String, dynamic>;
@@ -46,6 +46,14 @@ class ClientApi {
   }
 
   Future<void> cancel(int id) => client.post('/api/v1/bookings/$id/cancel');
+
+  // Note du chauffeur d'une course terminée (une seule fois).
+  Future<RideRating> rate(int id, {required int stars, String? comment}) async =>
+      RideRating.fromJson(await client.post('/api/v1/bookings/$id/rating', {'stars': stars, if (comment != null && comment.isNotEmpty) 'comment': comment}) as Map<String, dynamic>);
+
+  // Message à l'équipe, éventuellement à propos d'une course.
+  Future<void> sendFeedback({required String category, required String body, int? bookingId}) =>
+      client.post('/api/v1/feedbacks', {'category': category, 'body': body, 'booking_id': ?bookingId});
 
   // TEMPORAIRE avant Systempay (développement uniquement ; refusé en production).
   Future<void> simulatePayment(String reference) => client.post('/api/v1/payment_simulations', {'reference': reference});

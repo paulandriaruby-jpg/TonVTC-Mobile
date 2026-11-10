@@ -5,6 +5,8 @@ import '../api/client_api.dart';
 import '../auth/auth_controller.dart';
 import '../models/models.dart';
 import '../theme.dart';
+import 'feedback_screen.dart';
+import 'legal_screen.dart';
 import '../widgets/common.dart';
 import 'login_sheet.dart';
 
@@ -66,10 +68,12 @@ class _AccountScreenState extends State<AccountScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  const EmptyState(icon: Icons.person_outline, title: 'Pas encore connecté', message: 'Un compte permet de réserver et de suivre vos courses.'),
+                  const EmptyState(icon: Icons.person_outline, title: 'Pas encore connecté', message: 'Connectez-vous avec Google ou votre e-mail. Pas encore de compte ? Il est créé à votre première réservation.'),
                   FilledButton(onPressed: () async {
                     if (await showLoginSheet(context)) await _load();
-                  }, child: const Text('Se connecter ou créer un compte')),
+                  }, child: const Text('Se connecter')),
+                  const SizedBox(height: 12),
+                  const _LegalTile(),
                 ]),
               ),
             )
@@ -89,6 +93,19 @@ class _AccountScreenState extends State<AccountScreen> {
                       FilledButton(onPressed: _saving ? null : _save, child: const Text('Enregistrer')),
                     ]),
                   ),
+                  const SizedBox(height: 12),
+                  SectionCard(
+                    padding: EdgeInsets.zero,
+                    child: ListTile(
+                      leading: const Icon(Icons.chat_bubble_outline, color: AppColors.brand),
+                      title: const Text('Nous écrire'),
+                      subtitle: const Text('Une suggestion, un souci, un compliment'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const FeedbackScreen())),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const _LegalTile(),
                   const SizedBox(height: 20),
                   OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(foregroundColor: AppColors.danger),
@@ -97,6 +114,25 @@ class _AccountScreenState extends State<AccountScreen> {
                     label: const Text('Se déconnecter de ce téléphone'),
                   ),
                 ]),
+    );
+  }
+}
+
+// Accès aux informations légales (mentions légales, CGV, confidentialité).
+class _LegalTile extends StatelessWidget {
+  const _LegalTile();
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      padding: EdgeInsets.zero,
+      child: ListTile(
+        leading: const Icon(Icons.gavel_outlined, color: AppColors.brand),
+        title: const Text('Informations légales'),
+        subtitle: const Text('Mentions légales, CGV, confidentialité'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LegalScreen())),
+      ),
     );
   }
 }

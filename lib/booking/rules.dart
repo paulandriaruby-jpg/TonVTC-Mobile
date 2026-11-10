@@ -12,7 +12,7 @@ DateTime minimumDeparture(DateTime now) {
   return DateTime.fromMillisecondsSinceEpoch(rounded);
 }
 
-// Ramène une heure choisie au quart d'heure (09:07 → 09:15).
+// Ramène une heure choisie au quart d'heure (09:07 -> 09:15).
 DateTime roundToQuarter(DateTime value) {
   final extra = value.minute % 15;
   final base = DateTime(value.year, value.month, value.day, value.hour, value.minute - extra);
@@ -21,10 +21,10 @@ DateTime roundToQuarter(DateTime value) {
 
 String? tripError({required bool hasPickup, required bool hasDestination, DateTime? departure, required bool roundTrip, DateTime? returning, required DateTime now}) {
   if (!hasPickup || !hasDestination) return 'Choisissez vos deux adresses.';
-  if (departure == null) return 'Choisissez la date et l’heure de départ.';
+  if (departure == null) return 'Choisissez la date et l\'heure de départ.';
   if (departure.isBefore(minimumDeparture(now))) return 'Réservez au moins 2 heures avant le départ.';
   if (roundTrip) {
-    if (returning == null) return 'Choisissez la date et l’heure de retour.';
+    if (returning == null) return 'Choisissez la date et l\'heure de retour.';
     if (!returning.isAfter(departure)) return 'Le retour doit être après le départ.';
   }
   return null;

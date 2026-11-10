@@ -7,6 +7,7 @@ import '../auth/auth_controller.dart';
 import '../booking/booking_controller.dart';
 import '../booking/rules.dart';
 import '../models/models.dart';
+import '../legal/legal.dart';
 import '../theme.dart';
 import '../util/format.dart';
 import '../widgets/common.dart';
@@ -86,13 +87,13 @@ Widget _primary({required String label, required VoidCallback? onPressed, bool b
   label: Text(label),
 );
 
-// ── Étape 1 : trajet ───────────────────────────────────────────────────────────
+// -- Étape 1 : trajet -----------------------------------------------------------
 class _TripStep extends StatelessWidget {
   const _TripStep({super.key});
 
   Future<void> _pickAddress(BuildContext context, bool isPickup) async {
     final place = await Navigator.of(context)
-        .push<Place>(MaterialPageRoute(builder: (_) => AddressSearchScreen(title: isPickup ? 'Adresse de départ' : 'Adresse d’arrivée')));
+        .push<Place>(MaterialPageRoute(builder: (_) => AddressSearchScreen(title: isPickup ? 'Adresse de départ' : 'Adresse d\'arrivée')));
     if (place == null || !context.mounted) return;
     context.read<BookingController>().update((draft) => isPickup ? draft.pickup = place : draft.destination = place);
   }
@@ -109,7 +110,7 @@ class _TripStep extends StatelessWidget {
       helpText: isReturn ? 'Date du retour' : 'Date du départ',
     );
     if (date == null || !context.mounted) return;
-    final time = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(current), helpText: 'Heure (par quart d’heure)');
+    final time = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(current), helpText: 'Heure (par quart d\'heure)');
     if (time == null || !context.mounted) return;
     final chosen = roundToQuarter(DateTime(date.year, date.month, date.day, time.hour, time.minute));
     booking.update((draft) => isReturn ? draft.returning = chosen : draft.departure = chosen);
@@ -123,7 +124,7 @@ class _TripStep extends StatelessWidget {
       children: [
         const Text('Réservez votre chauffeur', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
         const SizedBox(height: 4),
-        const Text('Prix fixe connu à l’avance, chauffeur professionnel confirmé.', style: TextStyle(color: AppColors.muted)),
+        const Text('Prix fixe connu à l\'avance, chauffeur professionnel confirmé.', style: TextStyle(color: AppColors.muted)),
         const SizedBox(height: 16),
         SegmentedButton<bool>(
           segments: const [
@@ -153,7 +154,7 @@ class _TripStep extends StatelessWidget {
                 icon: Icons.place_outlined,
                 label: 'Arrivée',
                 value: booking.destination?.address,
-                placeholder: 'Adresse d’arrivée',
+                placeholder: 'Adresse d\'arrivée',
                 onTap: () => _pickAddress(context, false),
                 trailing: booking.pickup != null || booking.destination != null
                     ? IconButton(tooltip: 'Inverser', icon: const Icon(Icons.swap_vert), onPressed: booking.swap)
@@ -186,7 +187,7 @@ class _TripStep extends StatelessWidget {
         for (final (icon, text) in const [
           (Icons.lock_outline, 'Prix fixe, il ne change plus après la réservation'),
           (Icons.verified_user_outlined, 'Chauffeurs et véhicules vérifiés'),
-          (Icons.event_busy_outlined, 'Annulation gratuite jusqu’à 24 h avant'),
+          (Icons.event_busy_outlined, 'Annulation gratuite jusqu\'à 24 h avant'),
         ])
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
@@ -228,7 +229,7 @@ class _FieldTile extends StatelessWidget {
   );
 }
 
-// ── Étape 2 : véhicule ─────────────────────────────────────────────────────────
+// -- Étape 2 : véhicule ---------------------------------------------------------
 // Photos des gammes (mêmes que le site, gs-vtc-web/public/images) ; icône sinon.
 const _vehicleImages = {'berline': 'assets/images/berline.webp'};
 
@@ -282,7 +283,7 @@ class _VehicleStep extends StatelessWidget {
                                 Text(offer.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
                                 if (offer.description != null) Text(offer.description!, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
                                 const SizedBox(height: 4),
-                                Text('${offer.passengers} passagers · ${offer.luggage} bagages', style: const TextStyle(fontSize: 13)),
+                                Text('${offer.passengers} passagers - ${offer.luggage} bagages', style: const TextStyle(fontSize: 13)),
                                 if (offer.pricingNote != null)
                                   Text(
                                     offer.pricingNote!,
@@ -317,7 +318,7 @@ class _VehicleStep extends StatelessWidget {
               ),
               _SeatRow(
                 label: 'Siège bébé',
-                help: 'Jusqu’à 13 kg',
+                help: 'Jusqu\'à 13 kg',
                 price: quote.babySeatPrice,
                 count: booking.babySeats,
                 onChange: (d) => booking.changeSeats(baby: d),
@@ -360,7 +361,7 @@ class _SeatRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
-              Text(price > 0 ? '$help · ${money(price)}' : help, style: const TextStyle(color: AppColors.muted, fontSize: 12)),
+              Text(price > 0 ? '$help - ${money(price)}' : help, style: const TextStyle(color: AppColors.muted, fontSize: 12)),
             ],
           ),
         ),
@@ -418,9 +419,9 @@ class _TripRecap extends StatelessWidget {
           [
             '${dayLabel(booking.departure)} à ${time(booking.departure)}',
             if (booking.quote != null && booking.quote!.distanceKm > 0)
-              '${booking.quote!.distanceKm.toStringAsFixed(1)} km · ${booking.quote!.durationMinutes.round()} min',
+              '${booking.quote!.distanceKm.toStringAsFixed(1)} km - ${booking.quote!.durationMinutes.round()} min',
             if (booking.roundTrip && booking.returning != null) 'retour ${dayLabel(booking.returning!).toLowerCase()} à ${time(booking.returning!)}',
-          ].join(' · '),
+          ].join(' - '),
           style: const TextStyle(color: AppColors.muted, fontSize: 13),
         ),
       ],
@@ -428,7 +429,7 @@ class _TripRecap extends StatelessWidget {
   );
 }
 
-// ── Étape 3 : coordonnées (compte obligatoire) ─────────────────────────────────
+// -- Étape 3 : coordonnées (compte obligatoire) ---------------------------------
 class _CustomerStep extends StatefulWidget {
   const _CustomerStep({super.key});
 
@@ -444,12 +445,23 @@ class _CustomerStepState extends State<_CustomerStep> {
   final _transport = TextEditingController();
   final _sign = TextEditingController();
   final _promo = TextEditingController();
+  // Formulaire prêt : tout de suite sans compte (le client tape ses coordonnées), après lecture du compte sinon.
   bool _loaded = false;
+  bool _googleBusy = false;
 
   @override
   void initState() {
     super.initState();
-    if (context.read<AuthController>().state == AuthState.signedIn) _loadAccount();
+    final booking = context.read<BookingController>();
+    _first.text = booking.firstName;
+    _last.text = booking.lastName;
+    _email.text = booking.email;
+    _phone.text = booking.phone;
+    if (context.read<AuthController>().state == AuthState.signedIn) {
+      _loadAccount();
+    } else {
+      _loaded = true;
+    }
   }
 
   Future<void> _loadAccount() async {
@@ -465,8 +477,25 @@ class _CustomerStepState extends State<_CustomerStep> {
     setState(() => _loaded = true);
   }
 
-  Future<void> _login() async {
-    if (await showLoginSheet(context) && mounted) await _loadAccount();
+  // Compte existant (e-mail déjà connu) : connexion par mot de passe ou Google, puis le formulaire se remplit.
+  Future<void> _login({String? email}) async {
+    if (await showLoginSheet(context, email: email, phone: context.read<BookingController>().phone) && mounted) await _loadAccount();
+  }
+
+  // "Continuer avec Google" : compte retrouvé (coordonnées reprises) ou créé avec le téléphone déjà tapé.
+  Future<void> _google() async {
+    final auth = context.read<AuthController>();
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _googleBusy = true);
+    try {
+      if (await auth.loginWithGoogle(phone: context.read<BookingController>().phone) && mounted) await _loadAccount();
+    } on ApiException catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text(error.message)));
+    } catch (_) {
+      messenger.showSnackBar(const SnackBar(content: Text('Connexion impossible. Vérifiez votre réseau.')));
+    } finally {
+      if (mounted) setState(() => _googleBusy = false);
+    }
   }
 
   @override
@@ -486,24 +515,37 @@ class _CustomerStepState extends State<_CustomerStep> {
       children: [
         _TripRecap(booking: booking),
         const SizedBox(height: 12),
-        if (!signedIn)
-          SectionCard(
-            color: AppColors.accentSoft,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text('Un compte est nécessaire pour réserver', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+        if (!signedIn) ...[
+          if (booking.accountExists)
+            SectionCard(
+              color: AppColors.accentSoft,
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                const Text('Vous avez déjà un compte', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                 const SizedBox(height: 4),
-                const Text(
-                  'Connectez-vous avec Google ou votre e-mail : vos coordonnées sont remplies automatiquement.',
-                  style: TextStyle(color: AppColors.muted),
-                ),
+                Text('${booking.email.trim()} est déjà enregistré chez nous : connectez-vous pour réserver avec ce compte.', style: const TextStyle(color: AppColors.muted)),
                 const SizedBox(height: 12),
-                FilledButton.icon(onPressed: _login, icon: const Icon(Icons.login), label: const Text('Se connecter ou créer un compte')),
-              ],
+                FilledButton.icon(onPressed: () => _login(email: booking.email.trim()), icon: const Icon(Icons.login), label: const Text('Me connecter')),
+              ]),
+            )
+          else
+            SectionCard(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50), foregroundColor: AppColors.ink, side: const BorderSide(color: AppColors.line)),
+                  onPressed: _googleBusy ? null : _google,
+                  icon: _googleBusy
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Text('G', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF4285F4))),
+                  label: const Text('Continuer avec Google'),
+                ),
+                const SizedBox(height: 6),
+                const Text('Vos coordonnées sont remplies pour vous. Sinon, complétez le formulaire : votre compte est créé à la réservation.', textAlign: TextAlign.center, style: TextStyle(color: AppColors.muted, fontSize: 12)),
+                TextButton(onPressed: _login, child: const Text('Déjà un compte ? Se connecter')),
+              ]),
             ),
-          )
-        else if (!_loaded)
+          const SizedBox(height: 12),
+        ],
+        if (signedIn && !_loaded)
           const Padding(
             padding: EdgeInsets.all(24),
             child: Center(child: CircularProgressIndicator()),
@@ -550,8 +592,18 @@ class _CustomerStepState extends State<_CustomerStep> {
                 const SizedBox(height: 10),
                 TextField(
                   controller: _email,
-                  readOnly: true,
-                  decoration: const InputDecoration(labelText: 'E-mail (celui du compte)', prefixIcon: Icon(Icons.mail_outline)),
+                  readOnly: signedIn,
+                  keyboardType: TextInputType.emailAddress,
+                  autofillHints: const [AutofillHints.email],
+                  decoration: InputDecoration(
+                    labelText: signedIn ? 'E-mail (celui du compte)' : 'E-mail',
+                    prefixIcon: const Icon(Icons.mail_outline),
+                    helperText: signedIn ? null : 'Pour la confirmation et l\'accès à votre compte.',
+                  ),
+                  onChanged: (v) => bind((d) {
+                    d.email = v;
+                    d.accountExists = false;
+                  }),
                 ),
               ],
             ),
@@ -563,7 +615,7 @@ class _CustomerStepState extends State<_CustomerStep> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    terminal == 'station' ? (atPickup ? 'Arrivée en gare' : 'Départ en train') : (atPickup ? 'Arrivée à l’aéroport' : 'Départ en avion'),
+                    terminal == 'station' ? (atPickup ? 'Arrivée en gare' : 'Départ en train') : (atPickup ? 'Arrivée à l\'aéroport' : 'Départ en avion'),
                     style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
                   ),
                   Text(
@@ -611,7 +663,7 @@ class _CustomerStepState extends State<_CustomerStep> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          '${booking.promoCode} · ${booking.promoName} · −${money(booking.promoDiscount)}',
+                          '${booking.promoCode} - ${booking.promoName} - -${money(booking.promoDiscount)}',
                           style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.w600),
                         ),
                       ),
@@ -654,11 +706,11 @@ class _CustomerStepState extends State<_CustomerStep> {
           color: AppColors.brandSoft,
           child: Column(
             children: [
-              _Line('${booking.offer!.name}${booking.roundTrip ? ' · aller-retour' : ''}', money(booking.offer!.price)),
+              _Line('${booking.offer!.name}${booking.roundTrip ? ' - aller-retour' : ''}', money(booking.offer!.price)),
               if (booking.babySeats + booking.boosterSeats > 0)
                 _Line('Équipements enfant (${booking.babySeats + booking.boosterSeats})', money(booking.total - booking.offer!.price)),
-              if (split.promo > 0) _Line('Code promo', '−${money(split.promo)}', color: AppColors.success),
-              if (split.credit > 0) _Line('Avoir', '−${money(split.credit)}', color: AppColors.success),
+              if (split.promo > 0) _Line('Code promo', '-${money(split.promo)}', color: AppColors.success),
+              if (split.credit > 0) _Line('Avoir', '-${money(split.credit)}', color: AppColors.success),
               const Divider(),
               Row(
                 children: [
@@ -674,7 +726,7 @@ class _CustomerStepState extends State<_CustomerStep> {
             ],
           ),
         ),
-        if (signedIn && _loaded && booking.missingDetails.isNotEmpty)
+        if (_loaded && booking.missingDetails.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 10),
             child: Text(
@@ -682,19 +734,14 @@ class _CustomerStepState extends State<_CustomerStep> {
               style: const TextStyle(color: AppColors.accent, fontWeight: FontWeight.w600),
             ),
           ),
+        TermsCheckbox(value: booking.termsAccepted, onChanged: (v) => bind((d) => d.termsAccepted = v)),
         _errorBox(booking.error),
         const SizedBox(height: 12),
         _primary(
           label: 'Confirmer la réservation',
           icon: Icons.check,
           busy: booking.busy,
-          onPressed: booking.canConfirm(signedIn) && _loaded ? () => _confirm(context) : null,
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'En confirmant, vous acceptez nos CGV et notre politique de confidentialité.',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: AppColors.muted, fontSize: 12),
+          onPressed: booking.canConfirm() && _loaded && !booking.accountExists ? () => _confirm(context) : null,
         ),
       ],
     );
@@ -702,7 +749,11 @@ class _CustomerStepState extends State<_CustomerStep> {
 
   Future<void> _confirm(BuildContext context) async {
     final booking = context.read<BookingController>();
-    await booking.confirm(signedIn: true);
+    final auth = context.read<AuthController>();
+    await booking.confirm(
+      signedIn: auth.state == AuthState.signedIn,
+      createAccount: () => auth.register(firstName: booking.firstName, lastName: booking.lastName, email: booking.email, phone: booking.phone, termsAccepted: booking.termsAccepted),
+    );
     if (!context.mounted) return;
     if (booking.error == SessionExpired().message) context.read<AuthController>().expired();
   }
@@ -732,7 +783,7 @@ class _Line extends StatelessWidget {
   );
 }
 
-// ── Étape 4 : confirmation ─────────────────────────────────────────────────────
+// -- Étape 4 : confirmation -----------------------------------------------------
 class _DoneStep extends StatefulWidget {
   const _DoneStep({super.key, required this.onShowRides});
 
@@ -783,7 +834,7 @@ class _DoneStepState extends State<_DoneStep> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Référence ${ride.reference.substring(0, ride.reference.length.clamp(0, 12))} · confirmation envoyée par e-mail.',
+                'Référence ${ride.reference.substring(0, ride.reference.length.clamp(0, 12))} - confirmation envoyée par e-mail.',
                 style: const TextStyle(color: Color(0xFFE3E8FF)),
               ),
             ],
@@ -802,7 +853,7 @@ class _DoneStepState extends State<_DoneStep> {
                   [
                     if (ride.transportNumber != null) 'Vol / train ${ride.transportNumber}',
                     if (ride.signName != null) 'Pancarte : ${ride.signName}',
-                  ].join(' · '),
+                  ].join(' - '),
                   style: const TextStyle(color: AppColors.muted),
                 ),
             ],
@@ -820,7 +871,7 @@ class _DoneStepState extends State<_DoneStep> {
             ),
           )
         else if (ride.amountDue > 0) ...[
-          const SectionCard(color: AppColors.accentSoft, child: Text('Le paiement en ligne sera disponible prochainement. Aucun paiement n’a été effectué.')),
+          const SectionCard(color: AppColors.accentSoft, child: Text('Le paiement en ligne sera disponible prochainement. Aucun paiement n\'a été effectué.')),
           if (kDebugMode) ...[
             const SizedBox(height: 8),
             OutlinedButton.icon(
@@ -834,9 +885,9 @@ class _DoneStepState extends State<_DoneStep> {
         const Text('Et maintenant ?', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
         const SizedBox(height: 8),
         for (final (index, title, text) in const [
-          (1, 'Attribution d’un chauffeur', 'Vous recevez son nom et son véhicule par e-mail dès qu’il accepte.'),
-          (2, 'Rappel la veille', 'Pour les courses réservées plus de 24 h à l’avance.'),
-          (3, 'Annulation gratuite', 'Jusqu’à 24 h avant le départ, depuis « Mes courses ».'),
+          (1, 'Attribution d\'un chauffeur', 'Vous recevez son nom et son véhicule par e-mail dès qu\'il accepte.'),
+          (2, 'Rappel la veille', 'Pour les courses réservées plus de 24 h à l\'avance.'),
+          (3, 'Annulation gratuite', 'Jusqu\'à 24 h avant le départ, depuis "Mes courses".'),
         ])
           ListTile(
             contentPadding: EdgeInsets.zero,

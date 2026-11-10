@@ -8,7 +8,8 @@ import 'session_store.dart';
 enum AuthState { unknown, signedOut, signedIn }
 
 // Compte du client : facultatif pour voir les prix, obligatoire pour réserver.
-// Connexion par e-mail, par Google (prénom, nom et e-mail repris du compte Google) ou création de compte.
+// Connexion par e-mail ou par Google (prénom, nom et e-mail repris du compte Google, créé s'il n'existe pas).
+// Sans Google, le compte est créé à la première réservation avec les coordonnées du formulaire (register).
 class AuthController extends ChangeNotifier {
   AuthController({required this.client, required this.store, this.platform = 'android'});
 
@@ -29,13 +30,16 @@ class AuthController extends ChangeNotifier {
   Future<void> loginWithEmail(String email, String password) =>
       _open('/api/v1/mobile/sessions', {'email': email.trim(), 'password': password});
 
-  Future<void> register({required String firstName, required String lastName, required String email, required String phone, required String password}) =>
-      _open('/api/v1/mobile/registration', {'first_name': firstName.trim(), 'last_name': lastName.trim(), 'email': email.trim(), 'phone': phone.trim(), 'password': password});
+  // Compte créé à la première réservation, sans mot de passe : le client en choisit un grâce à l'e-mail reçu.
+  // `termsAccepted` : case des CGV et de la confidentialité cochée (l'API refuse sinon et garde la date et la version).
+  // Erreur "email_taken" si un compte existe déjà avec cet e-mail : il faut alors se connecter.
+  Future<void> register({required String firstName, required String lastName, required String email, required String phone, required bool termsAccepted}) =>
+      _open('/api/v1/mobile/registration', {'first_name': firstName.trim(), 'last_name': lastName.trim(), 'email': email.trim(), 'phone': phone.trim(), 'terms_accepted': termsAccepted});
 
-  // « Continuer avec Google » : le jeton d'identité Google est vérifié par l'API, qui ouvre ou crée le compte client.
-  // Renvoie false si le client a fermé la fenêtre Google.
-  Future<bool> loginWithGoogle() async {
-    if (!googleAvailable) throw ApiException('La connexion Google n’est pas encore disponible dans cette version.');
+  // "Continuer avec Google" : le jeton d'identité Google est vérifié par l'API, qui ouvre le compte s'il existe ou le
+  // crée ; `phone` (déjà tapé dans le formulaire) complète un compte sans téléphone. False si la fenêtre est fermée.
+  Future<bool> loginWithGoogle({String? phone}) async {
+    if (!googleAvailable) throw ApiException('La connexion Google n\'est pas encore disponible dans cette version.');
     final google = GoogleSignIn.instance;
     if (!_googleReady) {
       await google.initialize(serverClientId: googleServerClientId);
@@ -49,8 +53,8 @@ class AuthController extends ChangeNotifier {
       throw ApiException('Connexion Google impossible : ${error.description ?? error.code.name}.');
     }
     final idToken = account.authentication.idToken;
-    if (idToken == null) throw ApiException('Google n’a pas renvoyé d’identité. Réessayez.');
-    await _open('/api/v1/mobile/google_session', {'id_token': idToken});
+    if (idToken == null) throw ApiException('Google n\'a pas renvoyé d\'identité. Réessayez.');
+    await _open('/api/v1/mobile/google_session', {'id_token': idToken, if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim()});
     return true;
   }
 

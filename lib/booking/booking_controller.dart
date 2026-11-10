@@ -7,7 +7,7 @@ import 'rules.dart';
 
 enum BookingStep { trip, vehicle, customer, done }
 
-// Réservation en cours, comme sur le site : trajet → véhicule → coordonnées → confirmation.
+// Réservation en cours, comme sur le site : trajet -> véhicule -> coordonnées -> confirmation.
 // Le devis est demandé avant de quitter l'étape Trajet : un trajet hors forfait est refusé tout de suite.
 class BookingController extends ChangeNotifier {
   BookingController(this.api, {DateTime Function()? clock}) : _clock = clock ?? DateTime.now {
@@ -35,6 +35,10 @@ class BookingController extends ChangeNotifier {
   String phone = '';
   String transportNumber = '';
   String signName = '';
+  // Case des CGV et de la confidentialité : à cocher pour chaque réservation.
+  bool termsAccepted = false;
+  // Sans compte connecté : l'e-mail du formulaire est déjà celui d'un compte (il faut se connecter pour réserver).
+  bool accountExists = false;
 
   String? promoCode;
   String? promoName;
@@ -61,8 +65,8 @@ class BookingController extends ChangeNotifier {
 
   List<String> get missingDetails => customerProblems(firstName: firstName, lastName: lastName, email: email, phone: phone);
 
-  // Le bouton « Confirmer » n'est actif qu'avec un compte connecté et des coordonnées complètes.
-  bool canConfirm(bool signedIn) => signedIn && offer != null && missingDetails.isEmpty && tripProblem == null && !busy;
+  // Le bouton "Confirmer" n'est actif qu'avec des coordonnées complètes ; sans compte, il est créé à la confirmation.
+  bool canConfirm() => offer != null && missingDetails.isEmpty && termsAccepted && tripProblem == null && !busy;
 
   void update(void Function(BookingController draft) change) {
     change(this);
@@ -95,7 +99,7 @@ class BookingController extends ChangeNotifier {
         if (roundTrip && returning != null) 'return_at': returning!.toUtc().toIso8601String(),
       };
 
-  // Étape 1 → 2 : prix calculé par le serveur ; un refus (hors forfait, itinéraire impossible) reste sur l'étape.
+  // Étape 1 -> 2 : prix calculé par le serveur ; un refus (hors forfait, itinéraire impossible) reste sur l'étape.
   Future<void> showPrices() async {
     error = tripProblem;
     if (error != null) return notifyListeners();
@@ -127,7 +131,9 @@ class BookingController extends ChangeNotifier {
       firstName = profile.firstName;
       lastName = profile.lastName;
       email = profile.email;
-      phone = profile.phone;
+      // Un compte sans téléphone garde celui déjà tapé dans le formulaire.
+      if (profile.phone.isNotEmpty || phone.trim().isEmpty) phone = profile.phone;
+      accountExists = false;
       if (signName.isEmpty) signName = '${profile.firstName} ${profile.lastName}'.trim();
       creditBalance = await api.creditBalance().catchError((_) => 0.0);
     } on ApiException catch (e) {
@@ -149,13 +155,29 @@ class BookingController extends ChangeNotifier {
         promoDiscount = 0;
       });
 
-  // Étape 3 → 4 : coordonnées enregistrées sur le compte (pour la prochaine fois), puis réservation.
-  Future<void> confirm({required bool signedIn}) async {
-    if (!canConfirm(signedIn)) {
-      error = missingDetails.isEmpty ? 'Connectez-vous pour réserver.' : 'Complétez : ${missingDetails.join(', ')}.';
+  // Étape 3 -> 4 : sans compte connecté, le compte est d'abord créé avec le formulaire (`createAccount`) ; coordonnées
+  // enregistrées sur le compte (pour la prochaine fois), puis réservation.
+  Future<void> confirm({required bool signedIn, Future<void> Function()? createAccount}) async {
+    if (!canConfirm()) {
+      error = missingDetails.isNotEmpty
+              ? 'Complétez : ${missingDetails.join(', ')}.'
+              : !termsAccepted
+                  ? 'Acceptez les conditions générales de vente et la politique de confidentialité.'
+                  : 'Vérifiez votre trajet.';
       return notifyListeners();
     }
+    accountExists = false;
     await _run(() async {
+      if (!signedIn) {
+        if (createAccount == null) throw ApiException('Connectez-vous pour réserver.');
+        try {
+          await createAccount();
+        } on ApiException catch (e) {
+          if (e.code != 'email_taken') rethrow;
+          accountExists = true;
+          throw ApiException('Vous avez déjà un compte avec cet e-mail : connectez-vous pour réserver.');
+        }
+      }
       await api.updateProfile(firstName: firstName.trim(), lastName: lastName.trim(), phone: phone.trim());
       created = await api.createBooking({
         ...tripRequest(),
@@ -168,6 +190,7 @@ class BookingController extends ChangeNotifier {
         'customer_last_name': lastName.trim(),
         'customer_email': email.trim(),
         'customer_phone': phone.trim(),
+        'terms_accepted': true,
         if (promoCode != null && promoDiscount > 0) 'promo_code': promoCode,
         if (useCredit && creditBalance > 0) 'use_credit': true,
         if (terminalKind != null && transportNumber.trim().isNotEmpty) 'transport_number': transportNumber.trim(),
@@ -182,6 +205,7 @@ class BookingController extends ChangeNotifier {
         step = BookingStep.trip;
         pickup = destination = null;
         roundTrip = false;
+        termsAccepted = false;
         departure = minimumDeparture(_clock());
         returning = null;
         quote = offer = created = null;

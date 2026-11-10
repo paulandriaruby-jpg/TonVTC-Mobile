@@ -7,9 +7,12 @@ import '../models/models.dart';
 import '../theme.dart';
 import '../util/format.dart';
 import '../widgets/common.dart';
+import '../widgets/stars.dart';
+import 'feedback_screen.dart';
 import 'login_sheet.dart';
 
-// Mes courses : à venir et passées ; détail avec le chauffeur confirmé et l'annulation (frais affichés avant).
+// Mes courses : à venir et passées ; détail avec le chauffeur confirmé, l'annulation (frais affichés avant),
+// la note du chauffeur une fois la course terminée et un message à l'équipe.
 class RidesScreen extends StatefulWidget {
   const RidesScreen({super.key});
 
@@ -84,13 +87,19 @@ class _RidesScreenState extends State<RidesScreen> {
                 padding: const EdgeInsets.all(16),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [
-                    Expanded(child: Text('${dayLabel(ride.departureAt)} · ${time(ride.departureAt)}', style: const TextStyle(fontWeight: FontWeight.w800))),
+                    Expanded(child: Text('${dayLabel(ride.departureAt)} - ${time(ride.departureAt)}', style: const TextStyle(fontWeight: FontWeight.w800))),
                     _statusPill(ride),
                   ]),
                   const SizedBox(height: 10),
                   RouteLines(pickup: shortAddress(ride.pickup), destination: shortAddress(ride.destination), dense: true),
                   const SizedBox(height: 8),
-                  Text(money(ride.quotedPrice), style: const TextStyle(fontWeight: FontWeight.w700)),
+                  Row(children: [
+                    Expanded(child: Text(money(ride.quotedPrice), style: const TextStyle(fontWeight: FontWeight.w700))),
+                    if (ride.rating != null)
+                      StarRating(value: ride.rating!.stars, size: 16)
+                    else if (ride.canRate)
+                      const Pill('Notez votre chauffeur', color: Color(0xFF8A6100), background: Color(0xFFFFF4D6)),
+                  ]),
                 ]),
               ),
             ),
@@ -149,7 +158,7 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('Annuler la course ?'),
-          content: Text(preview.fee > 0 ? 'Des frais de ${money(preview.fee)} s’appliquent.' : 'L’annulation est gratuite.'),
+          content: Text(preview.fee > 0 ? 'Des frais de ${money(preview.fee)} s\'appliquent.' : 'L\'annulation est gratuite.'),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Retour')),
             FilledButton(style: FilledButton.styleFrom(minimumSize: const Size(0, 44), backgroundColor: AppColors.danger), onPressed: () => Navigator.pop(context, true), child: const Text('Annuler la course')),
@@ -165,11 +174,60 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
     }
   }
 
+  // Note du chauffeur : étoiles puis commentaire facultatif, dans une feuille en bas de l'écran.
+  Future<void> _rate([int initial = 0]) async {
+    final ride = _ride!;
+    final sent = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => _RatingSheet(rideId: ride.id!, driverName: ride.driverName ?? 'votre chauffeur', initialStars: initial, api: context.read<ClientApi>()),
+    );
+    if (sent != true) return;
+    await _load();
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Merci pour votre avis !')));
+  }
+
+  void _write(Ride ride, {String category = 'problem'}) => Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => FeedbackScreen(bookingId: ride.id, bookingLabel: '${dayLabel(ride.departureAt)} à ${time(ride.departureAt)}', initialCategory: category),
+      ));
+
+  Widget _ratingCard(Ride ride) {
+    final rating = ride.rating;
+    if (rating != null) {
+      return SectionCard(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Votre avis', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+          const SizedBox(height: 8),
+          Row(children: [
+            StarRating(value: rating.stars, size: 24),
+            const SizedBox(width: 8),
+            Text(StarRating.labels[rating.stars - 1], style: const TextStyle(color: AppColors.muted, fontWeight: FontWeight.w600)),
+          ]),
+          if (rating.comment != null) ...[
+            const SizedBox(height: 8),
+            Text('"${rating.comment}"', style: const TextStyle(fontStyle: FontStyle.italic, height: 1.4)),
+          ],
+        ]),
+      );
+    }
+    return SectionCard(
+      color: const Color(0xFFFFFBEF),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('Comment s\'est passée votre course avec ${ride.driverName ?? 'votre chauffeur'} ?', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+        const SizedBox(height: 4),
+        const Text('Votre note aide l\'équipe à garder un service de qualité.', style: TextStyle(color: AppColors.muted)),
+        const SizedBox(height: 8),
+        Center(child: StarRating(value: 0, size: 36, onChanged: _rate)),
+      ]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final ride = _ride;
     return Scaffold(
-      appBar: AppBar(title: Text(ride == null ? 'Course' : '${dayLabel(ride.departureAt)} · ${time(ride.departureAt)}')),
+      appBar: AppBar(title: Text(ride == null ? 'Course' : '${dayLabel(ride.departureAt)} - ${time(ride.departureAt)}')),
       body: ride == null
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
@@ -184,8 +242,29 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
                     const Text('Votre chauffeur', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                     const SizedBox(height: 6),
                     if (ride.driverName != null) ...[
-                      Text(ride.driverName!, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                      if (ride.carName != null) Text('${ride.carName}${ride.carPlate != null ? ' · ${ride.carPlate}' : ''}', style: const TextStyle(color: AppColors.muted)),
+                      const SizedBox(height: 6),
+                      Row(children: [
+                        DriverAvatar(url: ride.driverPhotoUrl == null ? null : '${context.read<ClientApi>().client.baseUrl}${ride.driverPhotoUrl}', radius: 36),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Text(ride.driverName!, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+                            if (ride.carName != null) Text('${ride.carName}${ride.carPlate != null ? ' - ${ride.carPlate}' : ''}', style: const TextStyle(color: AppColors.muted)),
+                          ]),
+                        ),
+                      ]),
+                      if (ride.status != 'completed' && ride.status != 'cancelled') ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(color: AppColors.brandSoft, borderRadius: BorderRadius.circular(8)),
+                          child: const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Icon(Icons.verified_user_outlined, size: 18, color: AppColors.brand),
+                            SizedBox(width: 8),
+                            Expanded(child: Text('Avant de monter, vérifiez que le chauffeur, la plaque et le véhicule correspondent. En cas de doute, ne montez pas et contactez-nous.', style: TextStyle(fontSize: 13, height: 1.35))),
+                          ]),
+                        ),
+                      ],
                     ] else
                       const Text('Pas encore attribué : vous serez prévenu par e-mail.', style: TextStyle(color: AppColors.muted)),
                   ]),
@@ -198,11 +277,19 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
                     if (ride.transportNumber != null) _line('Vol / train', ride.transportNumber!),
                     if (ride.signName != null) _line('Pancarte', ride.signName!),
                     _line('Prix', money(ride.quotedPrice)),
-                    if (ride.promoDiscount > 0) _line('Code promo', '−${money(ride.promoDiscount)}'),
-                    if (ride.creditUsed > 0) _line('Avoir', '−${money(ride.creditUsed)}'),
+                    if (ride.promoDiscount > 0) _line('Code promo', '-${money(ride.promoDiscount)}'),
+                    if (ride.creditUsed > 0) _line('Avoir', '-${money(ride.creditUsed)}'),
                     _line('Paiement', ride.paymentStatus == 'paid' ? 'Payée' : 'À régler : ${money(ride.amountDue)}'),
                   ]),
                 ),
+                if (ride.rating != null || ride.canRate) ...[
+                  const SizedBox(height: 12),
+                  _ratingCard(ride),
+                ],
+                if (ride.status == 'completed' || ride.status == 'in_progress') ...[
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(onPressed: () => _write(ride), icon: const Icon(Icons.chat_bubble_outline), label: const Text('Signaler un problème ou nous écrire')),
+                ],
                 if (ride.canCancel) ...[
                   const SizedBox(height: 20),
                   OutlinedButton.icon(style: OutlinedButton.styleFrom(foregroundColor: AppColors.danger), onPressed: _cancel, icon: const Icon(Icons.close), label: const Text('Annuler la course')),
@@ -219,4 +306,74 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
           Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.w500))),
         ]),
       );
+}
+
+class _RatingSheet extends StatefulWidget {
+  const _RatingSheet({required this.rideId, required this.driverName, required this.initialStars, required this.api});
+
+  final int rideId;
+  final String driverName;
+  final int initialStars;
+  final ClientApi api;
+
+  @override
+  State<_RatingSheet> createState() => _RatingSheetState();
+}
+
+class _RatingSheetState extends State<_RatingSheet> {
+  late int _stars = widget.initialStars;
+  final _comment = TextEditingController();
+  bool _sending = false;
+
+  @override
+  void dispose() {
+    _comment.dispose();
+    super.dispose();
+  }
+
+  Future<void> _send() async {
+    setState(() => _sending = true);
+    try {
+      await widget.api.rate(widget.rideId, stars: _stars, comment: _comment.text.trim());
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (error) {
+      if (mounted) {
+        setState(() => _sending = false);
+        handleError(context, error);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 0, 20, 20 + MediaQuery.viewInsetsOf(context).bottom),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text('Notez ${widget.driverName}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 12),
+        Center(child: StarRating(value: _stars, size: 40, onChanged: (value) => setState(() => _stars = value))),
+        SizedBox(
+          height: 24,
+          child: Center(child: Text(_stars == 0 ? 'Touchez une étoile' : StarRating.labels[_stars - 1], style: const TextStyle(color: AppColors.muted, fontWeight: FontWeight.w600))),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _comment,
+          minLines: 2,
+          maxLines: 5,
+          maxLength: 1000,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: InputDecoration(
+            labelText: 'Commentaire (facultatif)',
+            alignLabelWithHint: true,
+            hintText: _stars > 0 && _stars <= 2 ? 'Que s\'est-il passé ?' : 'Ponctualité, conduite, véhicule...',
+          ),
+        ),
+        const SizedBox(height: 4),
+        const Text('Votre note est définitive et transmise à l\'équipe TonVTC.', style: TextStyle(color: AppColors.muted, fontSize: 12)),
+        const SizedBox(height: 12),
+        FilledButton(onPressed: _stars == 0 || _sending ? null : _send, child: Text(_sending ? 'Envoi...' : 'Envoyer mon avis')),
+      ]),
+    );
+  }
 }

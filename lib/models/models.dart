@@ -59,7 +59,7 @@ class Offer {
       if (outbound['kind'] == 'fixed' && outbound['fixed_route'] != null) 'Forfait ${outbound['fixed_route']}',
       if (surcharge != null) '${surcharge['name']} +${_num(surcharge['percent']).toStringAsFixed(0)} %',
     ];
-    return parts.isEmpty ? null : parts.join(' · ');
+    return parts.isEmpty ? null : parts.join(' - ');
   }
 }
 
@@ -76,7 +76,7 @@ class Quote {
   final List<Offer> offers;
   final double babySeatPrice;
   final double boosterSeatPrice;
-  // « airport » ou « station » au départ / à l'arrivée : seulement alors, le formulaire demande le vol / train et la pancarte.
+  // "airport" ou "station" au départ / à l'arrivée : seulement alors, le formulaire demande le vol / train et la pancarte.
   final String? pickupKind;
   final String? destinationKind;
   final double distanceKm;
@@ -96,7 +96,7 @@ class Profile {
   final String phone;
 }
 
-// Course du client (réservation confirmée, ou dans « Mes courses »).
+// Course du client (réservation confirmée, ou dans "Mes courses").
 class Ride {
   Ride.fromJson(Map<String, dynamic> json)
       : id = json['id'] as int?,
@@ -114,9 +114,12 @@ class Ride {
         transportNumber = json['transport_number'] as String?,
         signName = json['sign_name'] as String?,
         driverName = (json['driver'] as Map<String, dynamic>?)?['name'] as String?,
+        driverPhotoUrl = (json['driver'] as Map<String, dynamic>?)?['photo_url'] as String?,
         carName = (json['car'] as Map<String, dynamic>?)?['name'] as String?,
         carPlate = (json['car'] as Map<String, dynamic>?)?['plate_number'] as String?,
-        canCancel = ((json['permissions'] as Map<String, dynamic>?)?['cancel']) == true;
+        canCancel = ((json['permissions'] as Map<String, dynamic>?)?['cancel']) == true,
+        canRate = ((json['permissions'] as Map<String, dynamic>?)?['rate']) == true,
+        rating = json['rating'] == null ? null : RideRating.fromJson(json['rating'] as Map<String, dynamic>);
 
   final int? id;
   final String reference;
@@ -133,13 +136,18 @@ class Ride {
   final String? transportNumber;
   final String? signName;
   final String? driverName;
+  // Photo du chauffeur vérifiée par l'équipe (lien temporaire de l'API, à préfixer par son adresse).
+  final String? driverPhotoUrl;
   final String? carName;
   final String? carPlate;
   final bool canCancel;
+  // Course terminée pas encore notée (dans les 30 jours) ; rating : la note déjà laissée.
+  final bool canRate;
+  final RideRating? rating;
 
   String get statusLabel => switch (status) {
-        'pending' => 'En attente d’un chauffeur',
-        'dispatched' => 'Chauffeur en cours d’attribution',
+        'pending' => 'En attente d\'un chauffeur',
+        'dispatched' => 'Chauffeur en cours d\'attribution',
         'accepted' => 'Chauffeur confirmé',
         'in_progress' => 'En cours',
         'completed' => 'Terminée',
@@ -147,3 +155,21 @@ class Ride {
         _ => status,
       };
 }
+
+// Note laissée par le client sur le chauffeur (1 à 5 étoiles, commentaire facultatif).
+class RideRating {
+  RideRating.fromJson(Map<String, dynamic> json)
+      : stars = json['stars'] as int,
+        comment = json['comment'] as String?;
+
+  final int stars;
+  final String? comment;
+}
+
+// Sujets d'un message à l'équipe (mêmes clés que l'API).
+const feedbackCategories = {
+  'suggestion': 'Suggestion',
+  'problem': 'Problème',
+  'compliment': 'Compliment',
+  'other': 'Autre',
+};

@@ -5,7 +5,7 @@ import '../api/api_client.dart';
 import '../auth/auth_controller.dart';
 import '../theme.dart';
 
-// Erreur d'appel : session perdue → déconnexion (le client se reconnecte pour réserver) ; sinon message en bas de l'écran.
+// Erreur d'appel : session perdue -> déconnexion (le client se reconnecte pour réserver) ; sinon message en bas de l'écran.
 void handleError(BuildContext context, Object error) {
   if (error is SessionExpired) {
     context.read<AuthController>().expired();
@@ -66,7 +66,7 @@ class Pill extends StatelessWidget {
       );
 }
 
-// Départ → arrivée, avec un point et un carré comme sur le site.
+// Départ -> arrivée, avec un point et un carré comme sur le site.
 class RouteLines extends StatelessWidget {
   const RouteLines({super.key, required this.pickup, required this.destination, this.dense = false});
 
@@ -90,5 +90,41 @@ class RouteLines extends StatelessWidget {
         Expanded(child: Text(destination, style: style, maxLines: dense ? 1 : 3, overflow: TextOverflow.ellipsis)),
       ]),
     ]);
+  }
+}
+
+// Photo du chauffeur (vérifiée par l'équipe), ou ses initiales à défaut ; touchée, elle s'agrandit.
+class DriverAvatar extends StatelessWidget {
+  const DriverAvatar({super.key, required this.url, this.radius = 28});
+
+  final String? url;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    final avatar = CircleAvatar(
+      radius: radius,
+      backgroundColor: AppColors.surface,
+      foregroundImage: url == null ? null : NetworkImage(url!),
+      child: Icon(Icons.person, size: radius, color: AppColors.muted),
+    );
+    if (url == null) return avatar;
+    return Semantics(
+      button: true,
+      label: 'Agrandir la photo du chauffeur',
+      child: GestureDetector(
+        onTap: () => showDialog<void>(
+          context: context,
+          builder: (context) => Dialog(
+            clipBehavior: Clip.antiAlias,
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Image.network(url!, fit: BoxFit.cover),
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Fermer')),
+            ]),
+          ),
+        ),
+        child: avatar,
+      ),
+    );
   }
 }

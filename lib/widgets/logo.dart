@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme.dart';
 
-// Symbole du logo (même dessin que le favicon du site) : « T » blanc dont le pied est une route, point orange.
+// Symbole du logo (même dessin que le favicon du site) : "T" blanc dont le pied est une route, point orange.
 class Logo extends StatelessWidget {
   const Logo({super.key, this.size = 40});
 

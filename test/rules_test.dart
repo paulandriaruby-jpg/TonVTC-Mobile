@@ -2,14 +2,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gs_vtc_client/booking/rules.dart';
 
 void main() {
-  test('premier départ possible : 2 h après, au quart d’heure suivant', () {
+  test('premier départ possible : 2 h après, au quart d\'heure suivant', () {
     expect(minimumDeparture(DateTime(2026, 11, 3, 10, 2)), DateTime(2026, 11, 3, 12, 15));
     expect(minimumDeparture(DateTime(2026, 11, 3, 10, 0)), DateTime(2026, 11, 3, 12, 0));
     expect(roundToQuarter(DateTime(2026, 11, 3, 9, 7)), DateTime(2026, 11, 3, 9, 15));
     expect(roundToQuarter(DateTime(2026, 11, 3, 9, 45)), DateTime(2026, 11, 3, 9, 45));
   });
 
-  test('trajet : adresses, délai de 2 h et retour après l’aller', () {
+  test('trajet : adresses, délai de 2 h et retour après l\'aller', () {
     final now = DateTime(2026, 11, 3, 10, 0);
     String? error({DateTime? departure, bool roundTrip = false, DateTime? returning, bool both = true}) =>
         tripError(hasPickup: both, hasDestination: true, departure: departure, roundTrip: roundTrip, returning: returning, now: now);
