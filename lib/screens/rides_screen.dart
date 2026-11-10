@@ -79,11 +79,13 @@ class RidesScreenState extends State<RidesScreen> with SingleTickerProviderState
     setState(() => _busy.add(proposal.id));
     final messenger = ScaffoldMessenger.of(context);
     try {
+      // On reste sur les propositions : le chauffeur continue de regarder les autres courses ; "Voir" ouvre la fiche.
       final ride = await _api.acceptProposal(proposal.id);
-      messenger.showSnackBar(const SnackBar(content: Text('Course acceptée : elle est dans "À venir".')));
+      messenger.showSnackBar(SnackBar(
+        content: const Text('Course acceptée : elle est dans "À venir".'),
+        action: SnackBarAction(label: 'Voir', onPressed: () => _openRide(ride.id)),
+      ));
       await _loadAll();
-      _tabs.animateTo(1);
-      if (mounted) await _openRide(ride.id);
     } on ApiException catch (error) {
       messenger.showSnackBar(SnackBar(content: Text(error.status == 409 ? 'Trop tard : la course a déjà été attribuée.' : error.message)));
       await _loadProposals();
@@ -208,12 +210,12 @@ class _ProposalCard extends StatelessWidget {
         Text(extras, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
         const SizedBox(height: 14),
         Row(children: [
-          Expanded(child: OutlinedButton(onPressed: busy ? null : onDecline, child: const Text('Refuser'))),
+          Expanded(child: OutlinedButton(style: dangerOutline(), onPressed: busy ? null : onDecline, child: const Text('Refuser'))),
           const SizedBox(width: 10),
           Expanded(
             flex: 2,
             child: FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: AppColors.accent, minimumSize: const Size.fromHeight(48)),
+              style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
               onPressed: busy ? null : onAccept,
               child: busy ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white)) : const Text('Accepter'),
             ),

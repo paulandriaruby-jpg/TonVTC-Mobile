@@ -26,8 +26,8 @@ Future<bool> confirmRemoveDocument(BuildContext context, DriverDocument document
         title: const Text('Supprimer ce fichier ?'),
         content: Text(document.filename),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Garder')),
-          FilledButton(style: FilledButton.styleFrom(minimumSize: const Size(0, 44), backgroundColor: AppColors.danger), onPressed: () => Navigator.pop(context, true), child: const Text('Supprimer')),
+          const DialogCancel('Garder'),
+          const DialogConfirm('Supprimer', danger: true),
         ],
       ),
     ) ??

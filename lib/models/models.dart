@@ -82,6 +82,7 @@ class Ride {
         signName = json['sign_name'] as String?,
         arrivalDelayMinutes = json['arrival_delay_minutes'] as int?,
         late = json['late'] == true,
+        freeWaitingMinutes = (json['free_waiting_minutes'] as int?) ?? 15,
         notes = ((json['driver_notes'] as List?) ?? []).map((n) => DriverNote.fromJson(n as Map<String, dynamic>)).toList(),
         permissions = ((json['permissions'] as Map<String, dynamic>?) ?? {}).map((key, value) => MapEntry(key, value == true));
 
@@ -115,6 +116,8 @@ class Ride {
   // Retard à l'arrivée chez le client (minutes après l'heure annoncée) ; late selon la tolérance de la plateforme.
   final int? arrivalDelayMinutes;
   final bool late;
+  // Attente offerte au client (plus longue à l'aéroport) ; au-delà, l'attente lui est facturée.
+  final int freeWaitingMinutes;
   final List<DriverNote> notes;
   final Map<String, bool> permissions;
 

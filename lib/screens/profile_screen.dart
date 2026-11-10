@@ -151,6 +151,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const Divider(height: 1),
                   ListTile(
+                    leading: const Icon(Icons.support_agent_outlined),
+                    title: const Text('Contacter l\'équipe TonVTC'),
+                    subtitle: const Text('contact@tonvtc.com'),
+                    trailing: const Icon(Icons.mail_outline, size: 18),
+                    onTap: () => launchUrl(Uri(scheme: 'mailto', path: 'contact@tonvtc.com')),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
                     leading: const Icon(Icons.gavel_outlined),
                     title: const Text('Informations légales'),
                     subtitle: const Text('Mentions légales, CGV, confidentialité'),
@@ -161,7 +169,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 20),
               OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(foregroundColor: AppColors.danger),
+                style: dangerOutline(),
                 onPressed: () => context.read<AuthController>().logout(),
                 icon: const Icon(Icons.logout),
                 label: const Text('Se déconnecter de ce téléphone'),

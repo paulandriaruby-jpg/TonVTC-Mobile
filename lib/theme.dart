@@ -28,7 +28,22 @@ ThemeData buildTheme() {
     appBarTheme: const AppBarTheme(backgroundColor: Colors.white, foregroundColor: AppColors.ink, elevation: 0, scrolledUnderElevation: 0.5),
     cardTheme: CardThemeData(color: Colors.white, elevation: 0, margin: EdgeInsets.zero, shape: shape),
     filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52), shape: shape, textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700))),
-    outlinedButtonTheme: OutlinedButtonThemeData(style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48), shape: shape)),
+    // Boutons secondaires (Refuser, Annuler, Itinéraire...) : bordure marquée, fond blanc, texte gras, même hauteur
+    // que le bouton principal, pour ne pas faire "lien" à côté de lui.
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size.fromHeight(52),
+        shape: shape,
+        backgroundColor: Colors.white,
+        foregroundColor: AppColors.ink,
+        side: const BorderSide(color: AppColors.field, width: 1.5),
+        textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+      ),
+    ),
+    // Boutons texte (Ajouter, Mot de passe oublié...) : en bleu, gras, sur un léger fond au toucher.
+    textButtonTheme: TextButtonThemeData(style: TextButton.styleFrom(foregroundColor: AppColors.brand, shape: shape, textStyle: const TextStyle(fontWeight: FontWeight.w700))),
+    // Fenêtres de confirmation : coins arrondis, boutons alignés à droite avec un espace.
+    dialogTheme: DialogThemeData(backgroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20)),
     // Champs comme sur le site : label dans le champ au repos, sur la bordure au focus ou avec une valeur.
     inputDecorationTheme: InputDecorationTheme(
       filled: true,

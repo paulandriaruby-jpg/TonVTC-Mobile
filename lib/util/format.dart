@@ -31,3 +31,9 @@ String monthLabel(String isoMonth) => _capitalize(DateFormat('MMMM yyyy', 'fr_FR
 String shortAddress(String address) => address.split(',').first.trim();
 
 String _capitalize(String value) => value.isEmpty ? value : value[0].toUpperCase() + value.substring(1);
+
+// "demain à 07:30", "aujourd'hui à 18:00", "lundi 16 novembre à 09:15".
+String untilLabel(DateTime value) {
+  final day = dayLabel(value);
+  return '${day[0].toLowerCase()}${day.substring(1)} à ${time(value)}';
+}

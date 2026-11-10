@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -23,6 +25,8 @@ class RideDetailScreen extends StatefulWidget {
 class _RideDetailScreenState extends State<RideDetailScreen> {
   Ride? _ride;
   String? _busy;
+  // Rafraîchit le compteur d'attente (sur place) et le délai avant le départ.
+  Timer? _ticker;
 
   DriverApi get _api => context.read<DriverApi>();
 
@@ -30,6 +34,15 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
   void initState() {
     super.initState();
     _load();
+    _ticker = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -64,20 +77,46 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
       builder: (context) => AlertDialog(
         content: Text(question),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Retour')),
-          FilledButton(style: FilledButton.styleFrom(minimumSize: const Size(0, 44), backgroundColor: AppColors.danger), onPressed: () => Navigator.pop(context, true), child: const Text('Confirmer')),
+          const DialogCancel('Retour'),
+          const DialogConfirm('Confirmer', danger: true),
         ],
       ),
     );
     if (ok == true) await _act(action, done);
   }
 
-  // Itinéraire vers le client tant qu'il n'est pas à bord, puis vers la destination.
+  // Itinéraire vers le client tant qu'il n'est pas à bord, puis vers la destination, dans Google Maps ou Waze.
   Future<void> _navigate(Ride ride) async {
-    final target = ride.step == RideStep.inProgress ? ride.destination : ride.pickup;
-    final uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=${Uri.encodeComponent(target)}&travelmode=driving');
+    final target = Uri.encodeComponent(ride.step == RideStep.inProgress ? ride.destination : ride.pickup);
+    final app = await showModalBottomSheet<String>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Padding(padding: EdgeInsets.fromLTRB(20, 18, 20, 6), child: Align(alignment: Alignment.centerLeft, child: Text('Ouvrir l\'itinéraire avec', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)))),
+          ListTile(leading: const Icon(Icons.map_outlined, color: AppColors.brand), title: const Text('Google Maps'), onTap: () => Navigator.pop(context, 'google')),
+          ListTile(leading: const Icon(Icons.navigation_outlined, color: AppColors.brand), title: const Text('Waze'), onTap: () => Navigator.pop(context, 'waze')),
+          const SizedBox(height: 8),
+        ]),
+      ),
+    );
+    if (app == null) return;
+    final uri = app == 'waze'
+        ? Uri.parse('https://waze.com/ul?q=$target&navigate=yes')
+        : Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$target&travelmode=driving');
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
+
+  // SMS au client, prérempli selon l'étape (en route, sur place) : utile quand on ne peut pas appeler.
+  Future<void> _sms(Ride ride) async {
+    final body = switch (ride.step) {
+      RideStep.arrived => 'Bonjour, je suis votre chauffeur TonVTC. Je suis arrivé au point de prise en charge${ride.carName != null ? ' (${ride.carName})' : ''}.',
+      RideStep.onTheWay => 'Bonjour, je suis votre chauffeur TonVTC. Je suis en route vers vous.',
+      _ => 'Bonjour, je suis votre chauffeur TonVTC pour votre course du ${dayLabel(ride.departureAt)} à ${time(ride.departureAt)}.',
+    };
+    await launchUrl(Uri(scheme: 'sms', path: ride.customerPhone, queryParameters: {'body': body}));
+  }
+
+  Future<void> _contactTeam(Ride ride) => launchUrl(Uri(scheme: 'mailto', path: 'contact@tonvtc.com', queryParameters: {'subject': 'Course ${ride.reference.substring(0, ride.reference.length.clamp(0, 12))}'}));
 
   Future<void> _report(Ride ride) async {
     const categories = {
@@ -129,8 +168,8 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
         title: const Text('Arrivée en retard'),
         content: Text('Vous êtes arrivé ${ride.arrivalDelayMinutes} min après l\'heure prévue. Voulez-vous expliquer pourquoi ? L\'équipe en tiendra compte.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Plus tard')),
-          FilledButton(style: FilledButton.styleFrom(minimumSize: const Size(0, 44)), onPressed: () => Navigator.pop(context, true), child: const Text('Expliquer')),
+          const DialogCancel('Plus tard'),
+          const DialogConfirm('Expliquer'),
         ],
       ),
     );
@@ -177,11 +216,13 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
             PopupMenuButton<String>(
               onSelected: (value) => switch (value) {
                 'report' => _report(ride),
+                'contact' => _contactTeam(ride),
                 'withdraw' => _confirm('withdraw', 'Vous désister de cette course ? Elle sera reproposée aux autres chauffeurs.', 'Désistement enregistré.'),
                 _ => null,
               },
               itemBuilder: (_) => [
                 if (ride.step != RideStep.cancelled) const PopupMenuItem(value: 'report', child: Text('Signaler un problème')),
+                const PopupMenuItem(value: 'contact', child: Text('Écrire à l\'équipe TonVTC')),
                 if (ride.can('withdraw')) const PopupMenuItem(value: 'withdraw', child: Text('Me désister')),
               ],
             ),
@@ -210,6 +251,10 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
                   ),
                   const SizedBox(height: 12),
                 ],
+                if (ride.step == RideStep.arrived && ride.arrivedAt != null) ...[
+                  _WaitingCard(ride: ride),
+                  const SizedBox(height: 12),
+                ],
                 if (ride.late)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
@@ -226,8 +271,10 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
                     Row(children: [
                       Expanded(child: OutlinedButton.icon(onPressed: () => _navigate(ride), icon: const Icon(Icons.navigation_outlined), label: const Text('Itinéraire'))),
                       if (ride.customerPhone != null && ride.step != RideStep.completed && ride.step != RideStep.cancelled) ...[
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 8),
                         Expanded(child: OutlinedButton.icon(onPressed: () => launchUrl(Uri.parse('tel:${ride.customerPhone}')), icon: const Icon(Icons.call_outlined), label: const Text('Appeler'))),
+                        const SizedBox(width: 8),
+                        Expanded(child: OutlinedButton.icon(onPressed: () => _sms(ride), icon: const Icon(Icons.sms_outlined), label: const Text('SMS'))),
                       ],
                     ]),
                   ]),
@@ -264,14 +311,29 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
         );
     return switch (ride.step) {
       RideStep.toAccept => [
-          if (ride.can('accept')) primary('accept', 'Accepter la course', 'Course acceptée.', icon: Icons.check),
+          if (ride.can('accept')) primary('accept', 'Accepter la course', 'Course acceptée : elle est dans "À venir".', icon: Icons.check),
           const SizedBox(height: 10),
-          if (ride.can('decline')) OutlinedButton(onPressed: _busy == null ? () => _confirm('decline', 'Refuser cette course ? Elle sera proposée aux autres chauffeurs.', 'Course refusée.') : null, child: const Text('Refuser')),
+          if (ride.can('decline')) OutlinedButton(style: dangerOutline(), onPressed: _busy == null ? () => _confirm('decline', 'Refuser cette course ? Elle sera proposée aux autres chauffeurs.', 'Course refusée.') : null, child: const Text('Refuser')),
         ],
+      // Course acceptée : rien ne démarre. Le chauffeur reste sur la fiche ; "Je pars" ne devient le bouton principal
+      // qu'à l'approche du départ (moins de 2 h), pour ne pas le lancer par erreur la veille.
       RideStep.accepted => [
-          if (ride.can('depart')) primary('depart', 'Je pars vers le client', 'Vous êtes en route.', icon: Icons.navigation),
-          const SizedBox(height: 10),
-          if (ride.can('arrive')) OutlinedButton(onPressed: _busy == null ? () => _act('arrive', 'Arrivée enregistrée : l\'attente du client commence.') : null, child: const Text('Je suis déjà arrivé')),
+          if (ride.departureAt.difference(DateTime.now()) > const Duration(hours: 2)) ...[
+            SectionCard(
+              color: AppColors.successSoft,
+              child: Row(children: [
+                const Icon(Icons.event_available, color: AppColors.success),
+                const SizedBox(width: 12),
+                Expanded(child: Text('Course acceptée. Départ ${untilLabel(ride.departureAt)} : le jour J, revenez ici et appuyez sur "Je pars vers le client".', style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.w600))),
+              ]),
+            ),
+            const SizedBox(height: 10),
+            if (ride.can('depart')) OutlinedButton.icon(onPressed: _busy == null ? () => _act('depart', 'Vous êtes en route.') : null, icon: const Icon(Icons.navigation_outlined), label: const Text('Je pars vers le client')),
+          ] else ...[
+            if (ride.can('depart')) primary('depart', 'Je pars vers le client', 'Vous êtes en route.', icon: Icons.navigation),
+            const SizedBox(height: 10),
+            if (ride.can('arrive')) OutlinedButton(onPressed: _busy == null ? () => _act('arrive', 'Arrivée enregistrée : l\'attente du client commence.') : null, child: const Text('Je suis déjà arrivé')),
+          ],
         ],
       RideStep.onTheWay => [if (ride.can('arrive')) primary('arrive', 'Je suis arrivé', 'Arrivée enregistrée : l\'attente du client commence.', icon: Icons.place)],
       RideStep.arrived => [if (ride.can('start')) primary('start', 'Démarrer la course', 'Course démarrée.', icon: Icons.play_arrow)],
@@ -285,6 +347,44 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
         ],
       RideStep.cancelled => [const SectionCard(color: AppColors.dangerSoft, child: Text('Course annulée.', style: TextStyle(color: AppColors.danger, fontWeight: FontWeight.w600)))],
     };
+  }
+}
+
+// Sur place : depuis quand le chauffeur attend, et quand l'attente devient facturée au client.
+class _WaitingCard extends StatelessWidget {
+  const _WaitingCard({required this.ride});
+
+  final Ride ride;
+
+  @override
+  Widget build(BuildContext context) {
+    // L'attente se compte à partir de l'heure prévue si le chauffeur est arrivé en avance (comme la facturation).
+    final from = ride.arrivedAt!.isAfter(ride.departureAt) ? ride.arrivedAt! : ride.departureAt;
+    final waited = DateTime.now().difference(from).inMinutes;
+    final early = DateTime.now().isBefore(ride.departureAt);
+    final left = ride.freeWaitingMinutes - waited;
+    final billed = !early && left <= 0;
+    final (color, background) = billed ? (AppColors.accent, AppColors.accentSoft) : (AppColors.brand, AppColors.brandSoft);
+    final title = early ? 'Sur place, en avance' : 'Attente : $waited min';
+    final detail = early
+        ? 'Prise en charge prévue à ${time(ride.departureAt)}. L\'attente se compte à partir de cette heure.'
+        : billed
+            ? 'Attente offerte (${ride.freeWaitingMinutes} min) dépassée : les minutes suivantes sont facturées au client.'
+            : 'Encore $left min d\'attente offerte au client (${ride.freeWaitingMinutes} min au total).';
+    return SectionCard(
+      color: background,
+      child: Row(children: [
+        Icon(Icons.timer_outlined, color: color, size: 28),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 17)),
+            const SizedBox(height: 2),
+            Text(detail, style: const TextStyle(color: AppColors.ink, fontSize: 13)),
+          ]),
+        ),
+      ]),
+    );
   }
 }
 
