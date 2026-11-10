@@ -89,7 +89,7 @@ void main() {
     return (sent: sent, picker: picker);
   }
 
-  testWidgets('ajoute une photo, puis la pièce passe à « Reçu » et le fichier apparaît', (tester) async {
+  testWidgets('ajoute une photo, puis la pièce passe à "Reçu" et le fichier apparaît', (tester) async {
     final doc = {'id': 5, 'kind': 'driving_license', 'filename': 'permis.jpg', 'byte_size': 204800};
     final env = await pump(tester, profileJson(), afterUpload: profileJson(documents: [doc], missing: ['identity', 'vtc_card']));
     expect(find.text('À fournir'), findsNWidgets(3));

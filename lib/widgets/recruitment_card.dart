@@ -85,7 +85,7 @@ class RecruitmentCard extends StatelessWidget {
           if (onEditDocuments != null) ...[
             const SizedBox(height: 8),
             // Les pièces personnelles, hors véhicule (étape suivante).
-            if (profile.detailsMissing.isEmpty && !profile.locked && profile.documentsMissing.any((key) => key != 'car'))
+            if (profile.detailsMissing.isEmpty && !profile.locked && profile.documentsMissing.any((key) => key != 'car' && key != 'photo'))
               FilledButton(onPressed: onEditDocuments, child: const Text('Ajouter mes documents'))
             else
               OutlinedButton(onPressed: onEditDocuments, child: Text(profile.locked ? 'Voir mes documents' : 'Mes documents')),
@@ -93,7 +93,7 @@ class RecruitmentCard extends StatelessWidget {
           if (onEditCars != null) ...[
             const SizedBox(height: 8),
             // Le véhicule vient après les informations et les pièces personnelles.
-            if (profile.detailsMissing.isEmpty && !profile.locked && profile.documentsMissing.every((key) => key == 'car') && profile.documentsMissing.contains('car'))
+            if (profile.detailsMissing.isEmpty && !profile.locked && profile.documentsMissing.every((key) => key == 'car' || key == 'photo') && profile.documentsMissing.contains('car'))
               FilledButton(onPressed: onEditCars, child: Text(profile.cars.isEmpty ? 'Ajouter mon véhicule' : 'Compléter mon véhicule'))
             else
               OutlinedButton(onPressed: onEditCars, child: Text(profile.cars.isEmpty ? 'Mon véhicule' : (profile.cars.length > 1 ? 'Mes véhicules' : 'Mon véhicule'))),
@@ -126,8 +126,8 @@ class RecruitmentPending extends StatelessWidget {
           children: [
             const EmptyState(
               icon: Icons.hourglass_top,
-              title: 'Votre dossier n’est pas encore validé',
-              message: 'Les courses et les gains s’ouvrent dès que votre compte est activé.',
+              title: 'Votre dossier n\'est pas encore validé',
+              message: 'Les courses et les gains s\'ouvrent dès que votre compte est activé.',
             ),
             RecruitmentCard(profile: profile),
             const SizedBox(height: 12),

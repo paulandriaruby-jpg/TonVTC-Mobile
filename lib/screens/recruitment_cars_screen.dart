@@ -56,7 +56,7 @@ class _RecruitmentCarsScreenState extends State<RecruitmentCarsScreen> {
                       Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text(car.name, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-                          Text([car.plateNumber, if (car.vehicleTypeName != null) car.vehicleTypeName!].join(' · '), style: const TextStyle(color: AppColors.muted)),
+                          Text([car.plateNumber, if (car.vehicleTypeName != null) car.vehicleTypeName!].join(' - '), style: const TextStyle(color: AppColors.muted)),
                           const SizedBox(height: 6),
                           if (car.documentsMissing.isEmpty)
                             Pill(car.validationLabel, color: car.validated ? AppColors.success : AppColors.brand, background: car.validated ? AppColors.successSoft : AppColors.brandSoft)

@@ -57,7 +57,7 @@ void main() {
     return sent;
   }
 
-  testWidgets('enregistre les informations d’un auto-entrepreneur', (tester) async {
+  testWidgets('enregistre les informations d\'un auto-entrepreneur', (tester) async {
     final sent = await pump(tester, DriverProfile.fromJson(profileJson()));
     final fields = find.byType(TextField);
     await tester.enterText(fields.at(0), '732 829 320 00074');
@@ -76,7 +76,7 @@ void main() {
     expect(jsonDecode(request.body)['share_capital'], isNull);
   });
 
-  testWidgets('affiche le refus du serveur et n’envoie rien si le formulaire est incomplet', (tester) async {
+  testWidgets('affiche le refus du serveur et n\'envoie rien si le formulaire est incomplet', (tester) async {
     final sent = await pump(tester, DriverProfile.fromJson(profileJson()), reply: (_) => http.Response(jsonEncode({'error': {'code': 'invalid_profile', 'message': 'Iban n\'est pas valide'}}), 422, headers: {'content-type': 'application/json; charset=utf-8'}));
     await tester.tap(find.text('Enregistrer'));
     await tester.pump();
@@ -94,7 +94,7 @@ void main() {
     expect(find.text('Iban n\'est pas valide'), findsOneWidget);
   });
 
-  testWidgets('dossier relu par l’équipe : lecture seule, sans bouton', (tester) async {
+  testWidgets('dossier relu par l\'équipe : lecture seule, sans bouton', (tester) async {
     await pump(tester, DriverProfile.fromJson(profileJson(status: 'files_collected', locked: true)));
     expect(find.textContaining('ne sont plus modifiables'), findsOneWidget);
     expect(find.text('Enregistrer'), findsNothing);

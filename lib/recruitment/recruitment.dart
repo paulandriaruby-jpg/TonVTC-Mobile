@@ -2,7 +2,7 @@
 
 const validationSteps = ['identified', 'data_collected', 'files_collected', 'validated_awaiting', 'validated'];
 
-// Numéro de l'étape sur 5 : 2/5 « identifié » … 5/5 « validé, en attente de première activation » ; « validé » = terminé.
+// Numéro de l'étape sur 5 : 2/5 "identifié" ... 5/5 "validé, en attente de première activation" ; "validé" = terminé.
 int stepNumber(String status) => switch (status) {
   'identified' => 2,
   'data_collected' => 3,
@@ -33,15 +33,16 @@ const _labels = {
   'rcs_code': 'Numéro RCS',
   'share_capital': 'Capital social',
   // Pièces
-  'identity': 'Pièce d’identité',
+  'identity': 'Pièce d\'identité',
   'driving_license': 'Permis de conduire',
   'vtc_card': 'Carte professionnelle VTC',
   'company_registration': 'Extrait Kbis',
-  'identity_type': 'Type de pièce d’identité',
-  'identity_expiry': 'Date de fin de validité de la pièce d’identité',
+  'identity_type': 'Type de pièce d\'identité',
+  'identity_expiry': 'Date de fin de validité de la pièce d\'identité',
   'vtc_card_number': 'Numéro de carte VTC',
   'vtc_expiry': 'Date de fin de validité de la carte VTC',
   'car': 'Un véhicule avec ses documents',
+  'photo': 'Votre photo (montrée aux clients)',
 };
 
 String missingLabel(String key) => _labels[key] ?? key;
@@ -82,21 +83,21 @@ class DocumentSpec {
   final int max;
 }
 
-const identityDocument = DocumentSpec('identity', 'Pièce d’identité', 'Recto et verso, ou la page photo du passeport.', 2);
+const identityDocument = DocumentSpec('identity', 'Pièce d\'identité', 'Recto et verso, ou la page photo du passeport.', 2);
 const licenseDocument = DocumentSpec('driving_license', 'Permis de conduire', 'Recto et verso.', 2);
 const vtcCardDocument = DocumentSpec('vtc_card', 'Carte professionnelle VTC', 'Recto et verso.', 2);
 const companyDocument = DocumentSpec('company_registration', 'Extrait Kbis', 'Document de moins de 3 mois.', 1);
 
-const identityTypes = {'national_identity_card': 'Carte nationale d’identité', 'passport': 'Passeport', 'residency_card': 'Titre de séjour'};
+const identityTypes = {'national_identity_card': 'Carte nationale d\'identité', 'passport': 'Passeport', 'residency_card': 'Titre de séjour'};
 
 // Le Kbis n'est demandé qu'aux sociétés et aux taxis (pas aux auto-entrepreneurs).
 List<DocumentSpec> personalDocuments(String legalStatus) => [identityDocument, licenseDocument, vtcCardDocument, if (legalStatus != 'self_employed') companyDocument];
 
-// Taille lisible d'un fichier envoyé (« 1,2 Mo »).
+// Taille lisible d'un fichier envoyé ("1,2 Mo").
 String fileSize(int bytes) => bytes >= 1048576 ? '${(bytes / 1048576).toStringAsFixed(1).replaceAll('.', ',')} Mo' : '${(bytes / 1024).ceil()} Ko';
 
 const carRegistrationDocument = DocumentSpec('car_registration', 'Carte grise', 'Recto et verso.', 2);
-const carInsuranceDocument = DocumentSpec('car_insurance', 'Attestation d’assurance', 'En cours de validité.', 1);
+const carInsuranceDocument = DocumentSpec('car_insurance', 'Attestation d\'assurance', 'En cours de validité.', 1);
 const carPictureDocument = DocumentSpec('car_picture', 'Photo du véhicule', 'Vue de trois quarts avant, plaque visible.', 1);
 const carRentalDocument = DocumentSpec('car_rental_contract', 'Contrat de location', 'Pour un véhicule loué.', 1);
 
@@ -107,7 +108,7 @@ const motors = {'gas': 'Thermique', 'hybrid': 'Hybride', 'electric': 'Électriqu
 // Contrôles avant l'envoi d'un véhicule (le serveur vérifie aussi le format de la plaque et son unicité).
 String? carError({required String brand, required String model, required String plate, required int? vehicleTypeId, required String seats}) {
   if (brand.trim().isEmpty || model.trim().isEmpty) return 'Indiquez la marque et le modèle.';
-  if (plate.trim().length < 4) return 'Indiquez l’immatriculation.';
+  if (plate.trim().length < 4) return 'Indiquez l\'immatriculation.';
   if (vehicleTypeId == null) return 'Choisissez la catégorie du véhicule.';
   final count = int.tryParse(seats.trim());
   if (seats.trim().isNotEmpty && (count == null || count < 1 || count > 20)) return 'Nombre de places invalide.';

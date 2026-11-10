@@ -8,11 +8,11 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../api/api_client.dart';
 import '../auth/session_store.dart';
 
-// Canaux Android : « Nouvelles courses » en priorité maximale (son, bandeau même téléphone verrouillé), « Rappels ».
+// Canaux Android : "Nouvelles courses" en priorité maximale (son, bandeau même téléphone verrouillé), "Rappels".
 const newRidesChannel = AndroidNotificationChannel('new_rides', 'Nouvelles courses',
-    description: 'Alerte dès qu’une course vous est proposée', importance: Importance.max);
+    description: 'Alerte dès qu\'une course vous est proposée', importance: Importance.max);
 const remindersChannel = AndroidNotificationChannel('reminders', 'Rappels de course',
-    description: 'Rappel la veille d’une course', importance: Importance.high);
+    description: 'Rappel la veille d\'une course', importance: Importance.high);
 
 // Notifications de l'app : Firebase Cloud Messaging reçoit l'alerte (app fermée ou ouverte), on enregistre le jeton
 // de l'appareil sur la session, et un appui sur la notification ouvre la course concernée.
@@ -47,7 +47,7 @@ class PushService {
 
     final messaging = FirebaseMessaging.instance;
     await messaging.requestPermission(alert: true, sound: true, badge: true);
-    // Jeton d'appareil classique, celui qu'attend l'envoi par l'API (champ « token » de FCM HTTP v1). La nouvelle
+    // Jeton d'appareil classique, celui qu'attend l'envoi par l'API (champ "token" de FCM HTTP v1). La nouvelle
     // inscription par identifiant d'installation (register / onRegistered) n'est pas encore utilisée côté serveur.
     // ignore: deprecated_member_use
     token = await messaging.getToken();

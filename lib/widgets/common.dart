@@ -5,7 +5,7 @@ import '../api/api_client.dart';
 import '../auth/auth_controller.dart';
 import '../theme.dart';
 
-// Erreur d'appel : session perdue → écran de connexion ; sinon message en bas de l'écran.
+// Erreur d'appel : session perdue -> écran de connexion ; sinon message en bas de l'écran.
 void handleError(BuildContext context, Object error) {
   if (error is SessionExpired) {
     context.read<AuthController>().expired();
@@ -66,7 +66,7 @@ class Pill extends StatelessWidget {
       );
 }
 
-// Départ → arrivée, avec un point et un carré comme sur le site.
+// Départ -> arrivée, avec un point et un carré comme sur le site.
 class RouteLines extends StatelessWidget {
   const RouteLines({super.key, required this.pickup, required this.destination, this.dense = false});
 

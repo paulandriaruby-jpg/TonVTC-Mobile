@@ -51,7 +51,7 @@ void main() {
     String? check({String brand = 'PEUGEOT', String model = '508', String plate = 'AB-123-CD', int? type = 1, String seats = ''}) => carError(brand: brand, model: model, plate: plate, vehicleTypeId: type, seats: seats);
     expect(check(), isNull);
     expect(check(brand: ' '), 'Indiquez la marque et le modèle.');
-    expect(check(plate: 'AB'), 'Indiquez l’immatriculation.');
+    expect(check(plate: 'AB'), 'Indiquez l\'immatriculation.');
     expect(check(type: null), 'Choisissez la catégorie du véhicule.');
     expect(check(seats: '40'), 'Nombre de places invalide.');
     expect(carDocuments(rental: false).map((d) => d.kind), ['car_registration', 'car_insurance', 'car_picture']);
@@ -99,7 +99,7 @@ void main() {
   testWidgets('liste : véhicule avec les documents encore à fournir, et ajout', (tester) async {
     await pump(tester, (p) => RecruitmentCarsScreen(profile: p), profileJson(cars: [carJson()]));
     expect(find.text('PEUGEOT 508'), findsOneWidget);
-    expect(find.text('AB-123-CD · Berline'), findsOneWidget);
+    expect(find.text('AB-123-CD - Berline'), findsOneWidget);
     expect(find.text('3 documents à fournir'), findsOneWidget);
     expect(find.text('Ajouter un autre véhicule'), findsOneWidget);
   });
@@ -132,7 +132,7 @@ void main() {
     await tester.enterText(fields.at(2), 'ab-123-cd');
     await tester.tap(find.byType(DropdownButtonFormField<int>));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Berline · 4 passagers').last);
+    await tester.tap(find.text('Berline - 4 passagers').last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Enregistrer le véhicule'));
     await tester.pumpAndSettle();
@@ -144,12 +144,12 @@ void main() {
     expect(body, containsPair('vehicle_type_id', 1));
     expect(body, containsPair('motor', 'gas'));
     expect(find.text('Carte grise'), findsOneWidget);
-    expect(find.text('Attestation d’assurance'), findsOneWidget);
+    expect(find.text('Attestation d\'assurance'), findsOneWidget);
     expect(find.text('Photo du véhicule'), findsOneWidget);
     expect(find.text('Contrat de location'), findsNothing);
   });
 
-  testWidgets('envoie la carte grise avec l’identifiant du véhicule', (tester) async {
+  testWidgets('envoie la carte grise avec l\'identifiant du véhicule', (tester) async {
     final sent = await pump(tester, (p) => RecruitmentCarScreen(profile: p, carId: 7), profileJson(cars: [carJson()]));
     await tester.tap(find.text('Ajouter').first);
     await tester.pumpAndSettle();

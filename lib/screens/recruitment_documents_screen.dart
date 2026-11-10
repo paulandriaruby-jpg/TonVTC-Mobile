@@ -12,7 +12,7 @@ import '../widgets/common.dart';
 import '../widgets/document_card.dart';
 
 // Pièces justificatives du dossier : photo ou PDF de chaque document, avec numéros et dates de validité.
-// Les fichiers s'envoient tout de suite ; les numéros et dates avec « Enregistrer ». Renvoie le profil à jour.
+// Les fichiers s'envoient tout de suite ; les numéros et dates avec "Enregistrer". Renvoie le profil à jour.
 class RecruitmentDocumentsScreen extends StatefulWidget {
   const RecruitmentDocumentsScreen({super.key, required this.profile});
 

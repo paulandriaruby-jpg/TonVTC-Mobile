@@ -7,7 +7,7 @@ import '../theme.dart';
 import '../util/format.dart';
 import '../widgets/common.dart';
 
-// Gains : mois en cours, à recevoir, mois précédents et relevés mensuels (même calcul que « Mes gains » sur le site).
+// Gains : mois en cours, à recevoir, mois précédents et relevés mensuels (même calcul que "Mes gains" sur le site).
 class EarningsScreen extends StatefulWidget {
   const EarningsScreen({super.key});
 
@@ -60,7 +60,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                         Text(earnings.punctualityRate == null ? 'Ponctualité : pas encore de course' : 'Ponctualité : ${earnings.punctualityRate} %', style: const TextStyle(fontWeight: FontWeight.w800)),
                         Text(earnings.arrivals == 0
                             ? 'Calculée sur vos arrivées des 3 derniers mois.'
-                            : '${earnings.lateArrivals} retard(s) sur ${earnings.arrivals} arrivée(s) · 3 derniers mois · retard à partir de ${earnings.lateToleranceMinutes} min',
+                            : '${earnings.lateArrivals} retard(s) sur ${earnings.arrivals} arrivée(s) - 3 derniers mois - retard à partir de ${earnings.lateToleranceMinutes} min',
                             style: const TextStyle(color: AppColors.muted, fontSize: 12)),
                       ]),
                     ),
@@ -74,7 +74,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                 const Text('Relevés', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 8),
                 if (earnings.payouts.isEmpty)
-                  const SectionCard(child: Text('Aucun relevé pour l’instant : il est établi chaque mois pour les courses terminées et payées.', style: TextStyle(color: AppColors.muted)))
+                  const SectionCard(child: Text('Aucun relevé pour l\'instant : il est établi chaque mois pour les courses terminées et payées.', style: TextStyle(color: AppColors.muted)))
                 else
                   ...earnings.payouts.map(_payout),
               ]),
@@ -93,7 +93,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
         const SizedBox(height: 6),
         Text(money(month.earned), style: const TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w800)),
         const SizedBox(height: 4),
-        Text('${month.count} course(s) · vous touchez $keep % de chaque course', style: const TextStyle(color: Color(0xFFE3E8FF), fontSize: 13)),
+        Text('${month.count} course(s) - vous touchez $keep % de chaque course', style: const TextStyle(color: Color(0xFFE3E8FF), fontSize: 13)),
       ]),
     );
   }
@@ -119,7 +119,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
           for (final month in months)
             ListTile(
               title: Text(monthLabel(month.month), style: const TextStyle(fontWeight: FontWeight.w700)),
-              subtitle: Text('${month.count} course(s) · versé ${money(month.paid)}'),
+              subtitle: Text('${month.count} course(s) - versé ${money(month.paid)}'),
               trailing: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [
                 Text(money(month.earned), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
                 if (month.toReceive > 0) Text('${money(month.toReceive)} à recevoir', style: const TextStyle(color: AppColors.accent, fontSize: 12)),
@@ -138,7 +138,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(payout.label, style: const TextStyle(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 4),
-                Text('${payout.count} course(s)${payout.paidAt != null ? ' · versé le ${dateTime(payout.paidAt!).split(' à ').first}' : ''}', style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+                Text('${payout.count} course(s)${payout.paidAt != null ? ' - versé le ${dateTime(payout.paidAt!).split(' à ').first}' : ''}', style: const TextStyle(color: AppColors.muted, fontSize: 13)),
               ]),
             ),
             Column(crossAxisAlignment: CrossAxisAlignment.end, children: [

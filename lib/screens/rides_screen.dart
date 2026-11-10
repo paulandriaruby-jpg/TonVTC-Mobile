@@ -7,9 +7,11 @@ import '../models/models.dart';
 import '../theme.dart';
 import '../util/format.dart';
 import '../widgets/common.dart';
+import '../widgets/ride_day.dart';
 import 'ride_detail_screen.dart';
 
-// Courses : propositions à accepter (le premier qui accepte l'obtient), courses à faire, historique.
+// Courses : propositions à accepter (le premier qui accepte l'obtient), courses à faire (regroupées et colorées par
+// jour : aujourd'hui, demain, plus tard), historique.
 class RidesScreen extends StatefulWidget {
   const RidesScreen({super.key});
 
@@ -38,7 +40,7 @@ class RidesScreenState extends State<RidesScreen> with SingleTickerProviderState
     super.dispose();
   }
 
-  // Ouverture depuis une notification « nouvelle course ».
+  // Ouverture depuis une notification "nouvelle course".
   void showProposals() {
     _tabs.animateTo(0);
     _loadProposals();
@@ -78,7 +80,7 @@ class RidesScreenState extends State<RidesScreen> with SingleTickerProviderState
     final messenger = ScaffoldMessenger.of(context);
     try {
       final ride = await _api.acceptProposal(proposal.id);
-      messenger.showSnackBar(const SnackBar(content: Text('Course acceptée : elle est dans « À venir ».')));
+      messenger.showSnackBar(const SnackBar(content: Text('Course acceptée : elle est dans "À venir".')));
       await _loadAll();
       _tabs.animateTo(1);
       if (mounted) await _openRide(ride.id);
@@ -126,11 +128,37 @@ class RidesScreenState extends State<RidesScreen> with SingleTickerProviderState
       ),
       body: TabBarView(controller: _tabs, children: [
         _list(_proposals, _loadProposals, (p) => _ProposalCard(proposal: p, busy: _busy.contains(p.id), onAccept: () => _accept(p), onDecline: () => _decline(p)),
-            const EmptyState(icon: Icons.notifications_none, title: 'Aucune course proposée', message: 'Vous recevez une notification dès qu’une course vous est proposée.')),
-        _list(_upcoming, _loadUpcoming, (r) => _RideCard(ride: r, onTap: () => _openRide(r.id)),
-            const EmptyState(icon: Icons.event_available, title: 'Aucune course à venir')),
+            const EmptyState(icon: Icons.notifications_none, title: 'Aucune course proposée', message: 'Vous recevez une notification dès qu\'une course vous est proposée.')),
+        _upcomingList(),
         _list(_past, _loadPast, (r) => _RideCard(ride: r, onTap: () => _openRide(r.id)),
             const EmptyState(icon: Icons.history, title: 'Pas encore de course terminée')),
+      ]),
+    );
+  }
+
+  // À venir : un intertitre par jour (aujourd'hui, demain, plus tard), les cartes aux couleurs du jour.
+  Widget _upcomingList() {
+    final rides = _upcoming;
+    if (rides == null) return const Center(child: CircularProgressIndicator());
+    final now = DateTime.now();
+    final groups = <RideDay, List<Ride>>{};
+    for (final ride in rides) {
+      groups.putIfAbsent(rideDay(ride.departureAt, now), () => []).add(ride);
+    }
+    return RefreshIndicator(
+      onRefresh: _loadUpcoming,
+      child: ListView(padding: const EdgeInsets.all(16), children: [
+        if (rides.isEmpty) const EmptyState(icon: Icons.event_available, title: 'Aucune course à venir'),
+        for (final day in RideDay.values)
+          if (groups[day] case final list?) ...[
+            DayHeader(tone: DayTone.of(day), count: list.length),
+            const SizedBox(height: 8),
+            for (final ride in list) ...[
+              _RideCard(ride: ride, tone: DayTone.of(day), soon: day == RideDay.today ? departureSoon(ride.departureAt, now) : null, onTap: () => _openRide(ride.id)),
+              const SizedBox(height: 12),
+            ],
+            const SizedBox(height: 8),
+          ],
       ]),
     );
   }
@@ -160,15 +188,15 @@ class _ProposalCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final extras = [
-      '${proposal.distanceKm.toStringAsFixed(0)} km · ${proposal.durationMinutes.round()} min',
+      '${proposal.distanceKm.toStringAsFixed(0)} km - ${proposal.durationMinutes.round()} min',
       if (proposal.transportNumber != null) 'Vol / train ${proposal.transportNumber}',
       if (proposal.roundTrip) 'Aller-retour',
       if (proposal.babySeats + proposal.boosterSeats > 0) '${proposal.babySeats + proposal.boosterSeats} siège(s) enfant',
-    ].join(' · ');
+    ].join(' - ');
     return SectionCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
-          Expanded(child: Text('${dayLabel(proposal.departureAt)} · ${time(proposal.departureAt)}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16))),
+          Expanded(child: Text('${dayLabel(proposal.departureAt)} - ${time(proposal.departureAt)}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16))),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
             Text(money(proposal.driverShare), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.brand)),
             const Text('pour vous', style: TextStyle(fontSize: 12, color: AppColors.muted)),
@@ -197,15 +225,25 @@ class _ProposalCard extends StatelessWidget {
 }
 
 class _RideCard extends StatelessWidget {
-  const _RideCard({required this.ride, required this.onTap});
+  const _RideCard({required this.ride, required this.onTap, this.tone, this.soon});
 
   final Ride ride;
   final VoidCallback onTap;
+  // À venir : couleurs du jour (carte entière, étiquette blanche) et "Départ dans X min". Historique : sans.
+  final DayTone? tone;
+  final String? soon;
 
   @override
   Widget build(BuildContext context) {
-    final (label, color, background) = stepLabel(ride.step);
+    final (label, stepColor, stepBackground) = stepLabel(ride.step);
+    final tone = this.tone;
+    final color = tone == null ? stepColor : (tone == DayTone.later ? AppColors.ink : tone.color);
+    final background = tone == null ? stepBackground : Colors.white;
+    // Aujourd'hui et demain : le jour est déjà dans l'intertitre, l'heure suffit.
+    final when = tone == DayTone.today || tone == DayTone.tomorrow ? time(ride.departureAt) : '${dayLabel(ride.departureAt)} - ${time(ride.departureAt)}';
     return Card(
+      color: tone?.background,
+      shape: tone == null ? null : RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: BorderSide(color: tone.border, width: tone == DayTone.later ? 1 : 1.5)),
       child: InkWell(
         borderRadius: BorderRadius.circular(8),
         onTap: onTap,
@@ -213,9 +251,17 @@ class _RideCard extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
-              Expanded(child: Text('${dayLabel(ride.departureAt)} · ${time(ride.departureAt)}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15))),
+              Expanded(child: Text(when, style: TextStyle(fontWeight: FontWeight.w800, fontSize: tone == null || tone == DayTone.later ? 15 : 18))),
               Pill(label, color: color, background: background),
             ]),
+            if (soon != null) ...[
+              const SizedBox(height: 2),
+              Row(children: [
+                Icon(Icons.schedule, size: 15, color: tone?.color ?? AppColors.success),
+                const SizedBox(width: 4),
+                Text(soon!, style: TextStyle(color: tone?.color ?? AppColors.success, fontWeight: FontWeight.w800, fontSize: 13)),
+              ]),
+            ],
             const SizedBox(height: 10),
             RouteLines(pickup: shortAddress(ride.pickup), destination: shortAddress(ride.destination), dense: true),
             if (ride.driverShare != null) ...[

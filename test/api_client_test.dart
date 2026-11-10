@@ -49,17 +49,17 @@ void main() {
     expect(refreshes, 1);
   });
 
-  test('message de l’API repris dans l’erreur, connexion qui enregistre la session', () async {
+  test('message de l\'API repris dans l\'erreur, connexion qui enregistre la session', () async {
     final client = ApiClient(baseUrl: 'http://api', store: MemorySessionStore(), client: MockClient((request) async {
       if (request.url.path == '/api/v1/mobile/sessions') {
         return json({'token': 't', 'refresh_token': 'r', 'session_id': 3, 'user': {'first_name': 'Alice'}}, 201);
       }
-      return json({'error': {'code': 'unavailable', 'message': 'Cette proposition n’est plus disponible.'}}, 409);
+      return json({'error': {'code': 'unavailable', 'message': 'Cette proposition n\'est plus disponible.'}}, 409);
     }));
     final data = await client.login(email: 'a@b.fr', password: 'x', device: {'platform': 'android'});
     expect(data['session_id'], 3);
     expect((client.store as MemorySessionStore).value?.token, 't');
     await expectLater(client.post('/api/v1/proposals/1/accept'),
-        throwsA(isA<ApiException>().having((e) => e.status, 'status', 409).having((e) => e.message, 'message', 'Cette proposition n’est plus disponible.')));
+        throwsA(isA<ApiException>().having((e) => e.status, 'status', 409).having((e) => e.message, 'message', 'Cette proposition n\'est plus disponible.')));
   });
 }

@@ -9,8 +9,11 @@ import '../models/models.dart';
 import '../push/push_service.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/driver_photo_card.dart';
 import '../widgets/recruitment_card.dart';
 import 'recruitment_details_screen.dart';
+import 'legal_screen.dart';
+import 'points_screen.dart';
 import 'recruitment_cars_screen.dart';
 import 'recruitment_documents_screen.dart';
 
@@ -25,6 +28,8 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   DriverProfile? _profile;
+  // Points : seulement une fois le dossier validé (les autres ne reçoivent pas encore de courses).
+  DriverPoints? _points;
   bool _saving = false;
 
   @override
@@ -35,8 +40,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _load() async {
     try {
-      final profile = await context.read<DriverApi>().profile();
+      final api = context.read<DriverApi>();
+      final profile = await api.profile();
       if (mounted) setState(() => _profile = profile);
+      if (profile.validated) {
+        final points = await api.points();
+        if (mounted) setState(() => _points = points);
+      }
     } catch (error) {
       if (mounted) handleError(context, error);
     }
@@ -94,9 +104,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   value: profile.available,
                   onChanged: _saving ? null : _setAvailable,
                   title: Text(profile.available ? 'Disponible' : 'Indisponible', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
-                  subtitle: Text(profile.available ? 'Vous recevez les nouvelles courses.' : 'Aucune course ne vous sera proposée (pause, congés…).'),
+                  subtitle: Text(profile.available ? 'Vous recevez les nouvelles courses.' : 'Aucune course ne vous sera proposée (pause, congés...).'),
                 ),
               ),
+              const SizedBox(height: 12),
+              DriverPhotoCard(photo: profile.photo, onChanged: (_) => _load()),
               const SizedBox(height: 12),
               SectionCard(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -107,6 +119,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   if (profile.validationLabel != null) ...[const SizedBox(height: 10), Pill(profile.validationLabel!)],
                 ]),
               ),
+              if (_points != null) ...[
+                const SizedBox(height: 12),
+                PointsCard(data: _points!, onTap: () async {
+                  await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PointsScreen()));
+                  await _load();
+                }),
+              ],
               if (!profile.validated) ...[
                 const SizedBox(height: 12),
                 RecruitmentCard(profile: profile, onEditDetails: _editDetails, onEditDocuments: _editDocuments, onEditCars: _editCars),
@@ -129,6 +148,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     subtitle: const Text('Sur le site'),
                     trailing: const Icon(Icons.open_in_new, size: 18),
                     onTap: () => launchUrl(Uri.parse('$siteUrl/espace/recrutement'), mode: LaunchMode.externalApplication),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.gavel_outlined),
+                    title: const Text('Informations légales'),
+                    subtitle: const Text('Mentions légales, CGV, confidentialité'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LegalScreen())),
                   ),
                 ]),
               ),

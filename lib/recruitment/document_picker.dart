@@ -1,7 +1,8 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 
-enum PickSource { camera, gallery, file }
+// selfie : appareil photo de face (photo du chauffeur montrée aux clients).
+enum PickSource { camera, selfie, gallery, file }
 
 class PickedDocument {
   const PickedDocument({required this.bytes, required this.filename});
@@ -24,11 +25,13 @@ class DevicePicker implements DocumentPicker {
       final file = await FilePicker.pickFile(type: FileType.custom, allowedExtensions: ['pdf']);
       return file == null ? null : PickedDocument(bytes: await file.readAsBytes(), filename: file.name);
     }
-    // Réduite à 2200 px : lisible et bien en dessous des 8 Mo acceptés par le serveur.
+    // Réduite à 2200 px : lisible et bien en dessous des 8 Mo acceptés par le serveur (1200 px pour un portrait).
+    final portrait = source == PickSource.selfie;
     final image = await _images.pickImage(
-      source: source == PickSource.camera ? ImageSource.camera : ImageSource.gallery,
-      maxWidth: 2200,
-      maxHeight: 2200,
+      source: source == PickSource.gallery ? ImageSource.gallery : ImageSource.camera,
+      preferredCameraDevice: portrait ? CameraDevice.front : CameraDevice.rear,
+      maxWidth: portrait ? 1200 : 2200,
+      maxHeight: portrait ? 1200 : 2200,
       imageQuality: 85,
     );
     return image == null ? null : PickedDocument(bytes: await image.readAsBytes(), filename: image.name);

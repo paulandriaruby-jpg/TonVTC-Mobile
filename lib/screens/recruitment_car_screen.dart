@@ -229,7 +229,7 @@ class _RecruitmentCarScreenState extends State<RecruitmentCarScreen> {
                 initialValue: _categories.any((c) => c.id == _vehicleTypeId) ? _vehicleTypeId : null,
                 isExpanded: true,
                 decoration: const InputDecoration(labelText: 'Catégorie'),
-                items: [for (final category in _categories) DropdownMenuItem(value: category.id, child: Text('${category.name} · ${category.passengers} passagers', overflow: TextOverflow.ellipsis))],
+                items: [for (final category in _categories) DropdownMenuItem(value: category.id, child: Text('${category.name} - ${category.passengers} passagers', overflow: TextOverflow.ellipsis))],
                 onChanged: field ? (value) => setState(() => _vehicleTypeId = value) : null,
               ),
               const SizedBox(height: 10),

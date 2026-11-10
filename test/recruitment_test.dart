@@ -10,7 +10,7 @@ Map<String, dynamic> profileJson(String status, {List<String> details = const []
     };
 
 void main() {
-  test('étapes du recrutement : numéro sur 5 et attente de l’équipe', () {
+  test('étapes du recrutement : numéro sur 5 et attente de l\'équipe', () {
     expect(validationSteps.map(stepNumber), [2, 3, 4, 5, 5]);
     expect(waitingForTeam('identified'), isFalse);
     expect(waitingForTeam('data_collected'), isFalse);
@@ -20,14 +20,14 @@ void main() {
     expect(missingLabel('inconnu'), 'inconnu');
   });
 
-  test('profil : seul un dossier « validé » ouvre les courses', () {
+  test('profil : seul un dossier "validé" ouvre les courses', () {
     expect(DriverProfile.fromJson(profileJson('validated')).validated, isTrue);
     expect(DriverProfile.fromJson(profileJson('validated_awaiting')).validated, isFalse);
     expect(DriverProfile.fromJson(profileJson('identified', details: ['iban'], documents: ['car'])).detailsMissing, ['iban']);
     expect(DriverProfile.fromJson({'user': {'first_name': 'A', 'last_name': 'B', 'email': 'a@b.c'}}).validated, isTrue);
   });
 
-  testWidgets('la fiche liste ce qu’il reste à fournir, ou annonce la vérification', (tester) async {
+  testWidgets('la fiche liste ce qu\'il reste à fournir, ou annonce la vérification', (tester) async {
     Future<void> show(DriverProfile profile) => tester.pumpWidget(MaterialApp(home: Scaffold(body: RecruitmentCard(profile: profile))));
 
     await show(DriverProfile.fromJson(profileJson('identified', details: ['iban', 'siret'], documents: ['vtc_card', 'car'])));
@@ -43,7 +43,7 @@ void main() {
     expect(find.text('Il reste à fournir :'), findsNothing);
   });
 
-  testWidgets('dossier figé : les boutons deviennent « Voir » (lecture seule), le véhicule reste accessible', (tester) async {
+  testWidgets('dossier figé : les boutons deviennent "Voir" (lecture seule), le véhicule reste accessible', (tester) async {
     final json = profileJson('validated_awaiting');
     (json['driver'] as Map<String, dynamic>)['locked'] = true;
     await tester.pumpWidget(MaterialApp(
@@ -56,7 +56,7 @@ void main() {
     expect(find.text('Compléter mes informations'), findsNothing);
   });
 
-  testWidgets('étape 2/5 : le bouton principal est « Compléter mes informations »', (tester) async {
+  testWidgets('étape 2/5 : le bouton principal est "Compléter mes informations"', (tester) async {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(body: RecruitmentCard(profile: DriverProfile.fromJson(profileJson('identified', details: ['iban'])), onEditDetails: () {}, onEditDocuments: () {}, onEditCars: () {})),
     ));

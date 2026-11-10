@@ -121,13 +121,13 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
     }
   }
 
-  // Arrivée en retard : on propose tout de suite d'en donner la raison (bouchons, accident…).
+  // Arrivée en retard : on propose tout de suite d'en donner la raison (bouchons, accident...).
   Future<void> _explainLate(Ride ride) async {
     final explain = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Arrivée en retard'),
-        content: Text('Vous êtes arrivé ${ride.arrivalDelayMinutes} min après l’heure prévue. Voulez-vous expliquer pourquoi ? L’équipe en tiendra compte.'),
+        content: Text('Vous êtes arrivé ${ride.arrivalDelayMinutes} min après l\'heure prévue. Voulez-vous expliquer pourquoi ? L\'équipe en tiendra compte.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Plus tard')),
           FilledButton(style: FilledButton.styleFrom(minimumSize: const Size(0, 44)), onPressed: () => Navigator.pop(context, true), child: const Text('Expliquer')),
@@ -137,7 +137,7 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
     if (explain == true && mounted) await _addRemark(ride, prefix: 'Retard de ${ride.arrivalDelayMinutes} min : ');
   }
 
-  // Remarque libre sur la course (bagages, accès, comportement…) : visible par l'équipe dans le journal.
+  // Remarque libre sur la course (bagages, accès, comportement...) : visible par l'équipe dans le journal.
   Future<void> _addRemark(Ride ride, {String prefix = ''}) async {
     final text = TextEditingController(text: prefix);
     final body = await showModalBottomSheet<String>(
@@ -148,9 +148,9 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           const Text('Ajouter une remarque', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
           const SizedBox(height: 4),
-          const Text('Visible par l’équipe. Pour un problème à régler, utilisez « Signaler un problème ».', style: TextStyle(color: AppColors.muted, fontSize: 13)),
+          const Text('Visible par l\'équipe. Pour un problème à régler, utilisez "Signaler un problème".', style: TextStyle(color: AppColors.muted, fontSize: 13)),
           const SizedBox(height: 12),
-          TextField(controller: text, autofocus: true, maxLines: 4, maxLength: 2000, decoration: const InputDecoration(hintText: 'Ex. : client avec deux grosses valises, accès par le parking…')),
+          TextField(controller: text, autofocus: true, maxLines: 4, maxLength: 2000, decoration: const InputDecoration(hintText: 'Ex. : client avec deux grosses valises, accès par le parking...')),
           const SizedBox(height: 8),
           FilledButton(onPressed: () => Navigator.pop(context, text.text.trim()), child: const Text('Enregistrer')),
         ]),
@@ -171,7 +171,7 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
     final ride = _ride;
     return Scaffold(
       appBar: AppBar(
-        title: Text(ride == null ? 'Course' : '${dayLabel(ride.departureAt)} · ${time(ride.departureAt)}'),
+        title: Text(ride == null ? 'Course' : '${dayLabel(ride.departureAt)} - ${time(ride.departureAt)}'),
         actions: [
           if (ride != null)
             PopupMenuButton<String>(
@@ -213,7 +213,7 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
                 if (ride.late)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: SectionCard(color: AppColors.accentSoft, child: Text('Arrivé avec ${ride.arrivalDelayMinutes} min de retard sur l’heure prévue.', style: const TextStyle(color: AppColors.accent, fontWeight: FontWeight.w600))),
+                    child: SectionCard(color: AppColors.accentSoft, child: Text('Arrivé avec ${ride.arrivalDelayMinutes} min de retard sur l\'heure prévue.', style: const TextStyle(color: AppColors.accent, fontWeight: FontWeight.w600))),
                   ),
                 SectionCard(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -235,8 +235,8 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
                 const SizedBox(height: 12),
                 SectionCard(
                   child: Column(children: [
-                    _Line('Client', ride.customerName.isEmpty ? '—' : ride.customerName),
-                    if (ride.babySeats + ride.boosterSeats > 0) _Line('Enfants', '${ride.babySeats} siège(s) bébé · ${ride.boosterSeats} rehausseur(s)'),
+                    _Line('Client', ride.customerName.isEmpty ? '-' : ride.customerName),
+                    if (ride.babySeats + ride.boosterSeats > 0) _Line('Enfants', '${ride.babySeats} siège(s) bébé - ${ride.boosterSeats} rehausseur(s)'),
                     if (ride.carName != null) _Line('Véhicule', ride.carName!),
                     _Line('Référence', ride.reference.substring(0, ride.reference.length.clamp(0, 12))),
                     if (ride.driverShare != null) _Line('Votre gain', money(ride.driverShare), strong: true)
@@ -271,15 +271,15 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
       RideStep.accepted => [
           if (ride.can('depart')) primary('depart', 'Je pars vers le client', 'Vous êtes en route.', icon: Icons.navigation),
           const SizedBox(height: 10),
-          if (ride.can('arrive')) OutlinedButton(onPressed: _busy == null ? () => _act('arrive', 'Arrivée enregistrée : l’attente du client commence.') : null, child: const Text('Je suis déjà arrivé')),
+          if (ride.can('arrive')) OutlinedButton(onPressed: _busy == null ? () => _act('arrive', 'Arrivée enregistrée : l\'attente du client commence.') : null, child: const Text('Je suis déjà arrivé')),
         ],
-      RideStep.onTheWay => [if (ride.can('arrive')) primary('arrive', 'Je suis arrivé', 'Arrivée enregistrée : l’attente du client commence.', icon: Icons.place)],
+      RideStep.onTheWay => [if (ride.can('arrive')) primary('arrive', 'Je suis arrivé', 'Arrivée enregistrée : l\'attente du client commence.', icon: Icons.place)],
       RideStep.arrived => [if (ride.can('start')) primary('start', 'Démarrer la course', 'Course démarrée.', icon: Icons.play_arrow)],
       RideStep.inProgress => [if (ride.can('finish')) primary('finish', 'Terminer la course', 'Course terminée. Merci !', icon: Icons.flag)],
       RideStep.completed => [
           SectionCard(
             color: AppColors.successSoft,
-            child: Text(ride.payoutStatus == 'paid' ? 'Course terminée · gain versé.' : 'Course terminée · le gain sera versé avec le relevé mensuel, après le paiement du client.',
+            child: Text(ride.payoutStatus == 'paid' ? 'Course terminée - gain versé.' : 'Course terminée - le gain sera versé avec le relevé mensuel, après le paiement du client.',
                 style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.w600)),
           ),
         ],
@@ -303,7 +303,7 @@ class _Notes extends StatelessWidget {
           if (onAdd != null) TextButton.icon(onPressed: onAdd, icon: const Icon(Icons.add_comment_outlined, size: 18), label: const Text('Ajouter')),
         ]),
         if (notes.isEmpty)
-          const Text('Aucune remarque. Ajoutez une information utile pour l’équipe (bagages, accès, attente…).', style: TextStyle(color: AppColors.muted, fontSize: 13))
+          const Text('Aucune remarque. Ajoutez une information utile pour l\'équipe (bagages, accès, attente...).', style: TextStyle(color: AppColors.muted, fontSize: 13))
         else
           for (final note in notes)
             Padding(
@@ -312,7 +312,7 @@ class _Notes extends StatelessWidget {
                 Row(children: [
                   Text(note.remark ? 'Remarque' : (note.label ?? 'Signalement'), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                   const SizedBox(width: 8),
-                  if (!note.remark) note.handled ? const Pill('Traité', color: AppColors.success, background: AppColors.successSoft) : const Pill('Envoyé à l’équipe', color: AppColors.accent, background: AppColors.accentSoft),
+                  if (!note.remark) note.handled ? const Pill('Traité', color: AppColors.success, background: AppColors.successSoft) : const Pill('Envoyé à l\'équipe', color: AppColors.accent, background: AppColors.accentSoft),
                   const Spacer(),
                   Text(time(note.createdAt), style: const TextStyle(color: AppColors.muted, fontSize: 12)),
                 ]),
@@ -341,7 +341,7 @@ class _Line extends StatelessWidget {
       );
 }
 
-// Avancement : Acceptée → En route → Sur place → En cours → Terminée.
+// Avancement : Acceptée -> En route -> Sur place -> En cours -> Terminée.
 class _StepTracker extends StatelessWidget {
   const _StepTracker({required this.step});
 

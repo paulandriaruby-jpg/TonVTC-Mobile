@@ -214,7 +214,8 @@ class DriverProfile {
         documents = ((json['driver'] as Map<String, dynamic>?)?['documents'] as List? ?? const [])
             .map((d) => DriverDocument.fromJson(d as Map<String, dynamic>))
             .toList(),
-        cars = ((json['driver'] as Map<String, dynamic>?)?['cars'] as List? ?? const []).map((c) => DriverCar.fromJson(c as Map<String, dynamic>)).toList();
+        cars = ((json['driver'] as Map<String, dynamic>?)?['cars'] as List? ?? const []).map((c) => DriverCar.fromJson(c as Map<String, dynamic>)).toList(),
+        photo = DriverPhoto.fromJson((json['driver'] as Map<String, dynamic>?) ?? const {});
 
   static List<String> _strings(Object? value) => (value as List?)?.map((e) => '$e').toList() ?? const [];
 
@@ -224,7 +225,7 @@ class DriverProfile {
   final String? phone;
   final bool available;
   final String? validationLabel;
-  // Étape du recrutement (identified … validated) ; null pour un compte sans fiche chauffeur.
+  // Étape du recrutement (identified ... validated) ; null pour un compte sans fiche chauffeur.
   final String? validationStatus;
   final List<String> detailsMissing;
   final List<String> documentsMissing;
@@ -234,6 +235,7 @@ class DriverProfile {
   // Pièces personnelles déjà envoyées (celles des véhicules sont dans la fiche du véhicule).
   final List<DriverDocument> documents;
   final List<DriverCar> cars;
+  final DriverPhoto photo;
 
   // L'accès aux courses et aux gains n'est ouvert qu'une fois le dossier validé.
   bool get validated => validationStatus == null || validationStatus == 'validated';
@@ -342,4 +344,74 @@ class VehicleCategory {
   final int id;
   final String name;
   final int passengers;
+}
+
+// Points du chauffeur : score sur la période glissante, rang, priorité sur les nouvelles courses, historique.
+class DriverPoints {
+  DriverPoints.fromJson(Map<String, dynamic> json)
+      : score = json['score'] as int? ?? 0,
+        rank = json['rank'] as int?,
+        prioritized = json['prioritized'] == true,
+        pointsToPriority = json['points_to_priority'] as int?,
+        priorityEnabled = (json['priority'] as Map<String, dynamic>?)?['enabled'] == true,
+        priorityMinutes = (json['priority'] as Map<String, dynamic>?)?['minutes'] == null ? null : ((json['priority'] as Map<String, dynamic>)['minutes'] as num).toInt(),
+        windowDays = json['window_days'] as int? ?? 90,
+        rules = ((json['rules'] as List?) ?? const []).map((r) => PointRule.fromJson(r as Map<String, dynamic>)).toList(),
+        entries = ((json['entries'] as List?) ?? const []).map((e) => PointEntry.fromJson(e as Map<String, dynamic>)).toList();
+
+  final int score;
+  final int? rank;
+  final bool prioritized;
+  final int? pointsToPriority;
+  // Priorité sur les nouvelles courses (désactivable par l'équipe). Le nombre de chauffeurs n'est jamais communiqué.
+  final bool priorityEnabled;
+  final int? priorityMinutes;
+  final int windowDays;
+  final List<PointRule> rules;
+  final List<PointEntry> entries;
+}
+
+class PointRule {
+  PointRule.fromJson(Map<String, dynamic> json)
+      : label = json['label'] as String,
+        points = json['points'] as int;
+
+  final String label;
+  final int points;
+}
+
+class PointEntry {
+  PointEntry.fromJson(Map<String, dynamic> json)
+      : label = json['label'] as String? ?? json['kind'] as String,
+        points = json['points'] as int,
+        createdAt = DateTime.parse(json['created_at'] as String).toLocal(),
+        bookingReference = json['booking_reference'] as String?,
+        counted = json['counted'] != false;
+
+  final String label;
+  final int points;
+  final DateTime createdAt;
+  final String? bookingReference;
+  // Plus ancienne que la période : affichée mais plus comptée.
+  final bool counted;
+}
+
+// Photo du chauffeur montrée aux clients : approuvée (url), en attente de vérification (pendingUrl), ou refusée (motif).
+// Les adresses sont des liens temporaires de l'API (chemins à préfixer par son adresse).
+class DriverPhoto {
+  DriverPhoto.fromJson(Map<String, dynamic> json)
+      : url = json['photo_url'] as String?,
+        pendingUrl = json['pending_photo_url'] as String?,
+        status = json['photo_status'] as String? ?? 'none',
+        rejectionReason = json['photo_rejection_reason'] as String?;
+
+  final String? url;
+  final String? pendingUrl;
+  // none (rien en attente), pending (en vérification), rejected (dernière photo refusée).
+  final String status;
+  final String? rejectionReason;
+
+  bool get pending => status == 'pending';
+  bool get rejected => status == 'rejected';
+  bool get missing => url == null && pendingUrl == null;
 }

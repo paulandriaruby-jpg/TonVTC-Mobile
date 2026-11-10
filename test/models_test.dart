@@ -44,7 +44,7 @@ void main() {
   });
 
   test('formats français', () {
-    expect(money('1234.5').replaceAll(' ', ' ').replaceAll(' ', ' '), '1 234,50 €');
+    expect(money('1234.5'), '1 234,50 €');
     expect(shortAddress('9 All. de la Feuillée, 74160 Saint-Julien, France'), '9 All. de la Feuillée');
     expect(monthLabel('2026-10-01'), 'Octobre 2026');
   });

@@ -16,7 +16,7 @@ class DriverApi {
 
   Future<void> declineProposal(int proposalId) => client.post('/api/v1/proposals/$proposalId/decline');
 
-  // period : « upcoming » (à faire) ou « past » (terminées / annulées).
+  // period : "upcoming" (à faire) ou "past" (terminées / annulées).
   Future<List<Ride>> rides(String period) async {
     final data = await client.get('/api/v1/bookings', query: {
       'period': period,
@@ -26,6 +26,8 @@ class DriverApi {
     }) as Map<String, dynamic>;
     return (data['data'] as List).map((r) => Ride.fromJson(r as Map<String, dynamic>)).toList();
   }
+
+  Future<DriverPoints> points() async => DriverPoints.fromJson(await client.get('/api/v1/points') as Map<String, dynamic>);
 
   Future<Ride> ride(int id) async => Ride.fromJson(await client.get('/api/v1/bookings/$id') as Map<String, dynamic>);
 
@@ -41,7 +43,7 @@ class DriverApi {
     return data is Map<String, dynamic> ? Ride.fromJson(data) : ride(id);
   }
 
-  // Remarque : simple information pour l'équipe (catégorie « remark », texte obligatoire).
+  // Remarque : simple information pour l'équipe (catégorie "remark", texte obligatoire).
   Future<void> remark(int id, String body) => report(id, category: 'remark', body: body);
 
   Future<void> report(int id, {required String category, String? body}) =>
@@ -56,9 +58,13 @@ class DriverApi {
       DriverProfile.fromJson(await client.patch('/api/v1/profile', details) as Map<String, dynamic>);
 
   // Pièce justificative du chauffeur (photo ou PDF) ; le serveur vérifie le type réel du fichier (8 Mo maximum).
-  // `carId` : pièce d'un véhicule (carte grise, assurance…) au lieu d'une pièce personnelle.
+  // `carId` : pièce d'un véhicule (carte grise, assurance...) au lieu d'une pièce personnelle.
   Future<void> uploadDocument({required String kind, required List<int> bytes, required String filename, int? carId}) =>
       client.upload('/api/v1/profile/documents', fields: {'kind': kind, if (carId != null) 'car_id': '$carId'}, fileField: 'file', bytes: bytes, filename: filename);
+
+  // Photo du chauffeur (selfie ou galerie) : elle attend la vérification de l'équipe avant d'être montrée aux clients.
+  Future<DriverPhoto> uploadPhoto({required List<int> bytes, required String filename}) async =>
+      DriverPhoto.fromJson(await client.upload('/api/v1/profile/photo', fields: const {}, fileField: 'file', bytes: bytes, filename: filename) as Map<String, dynamic>);
 
   Future<List<VehicleCategory>> vehicleCategories() async =>
       (await client.get('/api/v1/vehicle_types') as List).map((v) => VehicleCategory.fromJson(v as Map<String, dynamic>)).toList();
