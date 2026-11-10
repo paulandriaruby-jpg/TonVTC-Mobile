@@ -122,9 +122,7 @@ class _TripStep extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        const Text('Réservez votre chauffeur', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
-        const SizedBox(height: 4),
-        const Text('Prix fixe connu à l\'avance, chauffeur professionnel confirmé.', style: TextStyle(color: AppColors.muted)),
+        const _Banner(),
         const SizedBox(height: 16),
         SegmentedButton<bool>(
           segments: const [
@@ -200,6 +198,42 @@ class _TripStep extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+// Bandeau d'accueil : la berline de nuit au-dessus d'Annecy, assombrie en bas pour le texte.
+class _Banner extends StatelessWidget {
+  const _Banner();
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: SizedBox(
+        height: 190,
+        child: Stack(fit: StackFit.expand, children: [
+          Image.asset('assets/images/accueil-nuit.webp', fit: BoxFit.cover, alignment: const Alignment(0, .4)),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0x1A041325), Color(0xD9041325)],
+                stops: [.3, 1],
+              ),
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.all(18),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.end, children: [
+              Text('Réservez votre chauffeur', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
+              SizedBox(height: 4),
+              Text('Prix fixe connu à l\'avance, chauffeur professionnel confirmé.', style: TextStyle(color: Color(0xFFD3D9E4))),
+            ]),
+          ),
+        ]),
+      ),
     );
   }
 }
