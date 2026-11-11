@@ -146,7 +146,7 @@ class _TripStep extends StatelessWidget {
               color: Colors.white,
               elevation: 6,
               shadowColor: const Color(0x55041325),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(8),
               child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -202,7 +202,7 @@ class _TripStep extends StatelessWidget {
                 label: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
                 backgroundColor: Colors.white,
                 side: const BorderSide(color: AppColors.line),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 onPressed: () => _pickAddress(context, false, query: label),
               );
             },
@@ -225,7 +225,7 @@ class _TripStep extends StatelessWidget {
                     Container(
                       width: 44,
                       height: 44,
-                      decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(12)),
+                      decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(8)),
                       child: Icon(icon, color: color),
                     ),
                     const SizedBox(width: 14),
@@ -271,16 +271,8 @@ class _Hero extends StatelessWidget {
     height: height,
     child: Stack(fit: StackFit.expand, children: [
       Image.asset('assets/images/accueil-nuit.webp', fit: BoxFit.cover, alignment: const Alignment(0, .5)),
-      const DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0x99041325), Color(0x33041325), Color(0xCC041325)],
-            stops: [0, .45, 1],
-          ),
-        ),
-      ),
+      // Voile uni (pas de dégradé) pour lire le texte sur la photo.
+      const ColoredBox(color: Color(0x8C041325)),
       Padding(
         padding: EdgeInsets.fromLTRB(20, top + 14, 20, 0),
         child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -309,7 +301,7 @@ class _TripToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(4),
-    decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12)),
+    decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(8)),
     child: Row(children: [
       for (final (value, label) in const [(false, 'Aller simple'), (true, 'Aller-retour')])
         Expanded(
@@ -322,7 +314,7 @@ class _TripToggle extends StatelessWidget {
                 duration: const Duration(milliseconds: 180),
                 height: 40,
                 alignment: Alignment.center,
-                decoration: BoxDecoration(color: roundTrip == value ? AppColors.ink : Colors.transparent, borderRadius: BorderRadius.circular(9)),
+                decoration: BoxDecoration(color: roundTrip == value ? AppColors.ink : Colors.transparent, borderRadius: BorderRadius.circular(8)),
                 child: Text(label, style: TextStyle(fontWeight: FontWeight.w700, color: roundTrip == value ? Colors.white : AppColors.ink)),
               ),
             ),
@@ -344,7 +336,7 @@ class _AddressPair extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    decoration: BoxDecoration(border: Border.all(color: AppColors.line, width: 1.5), borderRadius: BorderRadius.circular(12)),
+    decoration: BoxDecoration(border: Border.all(color: AppColors.line, width: 1.5), borderRadius: BorderRadius.circular(8)),
     child: Row(children: [
       const SizedBox(width: 16),
       Column(children: [
@@ -430,9 +422,9 @@ class _Box extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Material(
     color: Colors.white,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: AppColors.line, width: 1.5)),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: const BorderSide(color: AppColors.line, width: 1.5)),
     child: InkWell(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(8),
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),

@@ -38,14 +38,20 @@ ThemeData buildTheme() {
       ),
     ),
     textButtonTheme: TextButtonThemeData(style: TextButton.styleFrom(foregroundColor: AppColors.brand, shape: shape, textStyle: const TextStyle(fontWeight: FontWeight.w700))),
-    dialogTheme: DialogThemeData(backgroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20)),
-    chipTheme: const ChipThemeData(labelStyle: TextStyle(color: AppColors.ink)),
+    dialogTheme: DialogThemeData(backgroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20)),
+    chipTheme: ChipThemeData(labelStyle: const TextStyle(color: AppColors.ink), shape: shape),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: Colors.white,
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.line)),
       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.line)),
     ),
-    navigationBarTheme: const NavigationBarThemeData(backgroundColor: Colors.white, indicatorColor: AppColors.brandSoft),
+    // Arrondis de 8 px au plus partout (règle TonVTC) : Material 3 met 28 px aux feuilles du bas et une capsule à la
+    // pastille de navigation par défaut.
+    navigationBarTheme: NavigationBarThemeData(backgroundColor: Colors.white, indicatorColor: AppColors.brandSoft, indicatorShape: shape),
+    bottomSheetTheme: const BottomSheetThemeData(backgroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(8)))),
+    elevatedButtonTheme: ElevatedButtonThemeData(style: ElevatedButton.styleFrom(shape: shape)),
+    floatingActionButtonTheme: FloatingActionButtonThemeData(shape: shape),
+    segmentedButtonTheme: SegmentedButtonThemeData(style: SegmentedButton.styleFrom(shape: shape)),
   );
 }
