@@ -31,4 +31,13 @@ class RecentPlaces {
       // Sans stockage : pas d'adresses récentes.
     }
   }
+
+  // Compte supprimé : les adresses récentes ne restent pas sur le téléphone.
+  Future<void> clear() async {
+    try {
+      await _storage.delete(key: _key);
+    } catch (_) {
+      // Rien à effacer.
+    }
+  }
 }

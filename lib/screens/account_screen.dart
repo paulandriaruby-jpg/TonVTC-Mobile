@@ -3,14 +3,16 @@ import 'package:provider/provider.dart';
 
 import '../api/client_api.dart';
 import '../auth/auth_controller.dart';
+import '../booking/recent_places.dart';
 import '../models/models.dart';
 import '../theme.dart';
+import '../util/format.dart';
 import 'feedback_screen.dart';
 import 'legal_screen.dart';
 import '../widgets/common.dart';
 import 'login_sheet.dart';
 
-// Compte : coordonnées utilisées pour réserver (modifiables), déconnexion de ce téléphone.
+// Compte : coordonnées utilisées pour réserver (modifiables), déconnexion de ce téléphone, suppression du compte.
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
 
@@ -55,6 +57,56 @@ class _AccountScreenState extends State<AccountScreen> {
       if (mounted) handleError(context, error);
     } finally {
       if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  // Suppression du compte : l'API dit d'abord ce qui l'empêche ou ce qui sera perdu, puis on confirme. Le compte est
+  // anonymisé côté serveur (courses et reçus gardés sans les coordonnées) ; le téléphone oublie la session et les adresses.
+  Future<void> _deleteAccount() async {
+    final api = context.read<ClientApi>();
+    final auth = context.read<AuthController>();
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final check = await api.deletionCheck();
+      if (!mounted) return;
+      if (!check.allowed) {
+        await showDialog<void>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Suppression impossible pour le moment'),
+            content: Text(check.reason ?? 'Réessayez plus tard.'),
+            actions: const [DialogCancel('Fermer')],
+          ),
+        );
+        return;
+      }
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Supprimer votre compte ?'),
+          content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Cette action est définitive.'),
+            const SizedBox(height: 10),
+            const Text('- Votre nom, votre e-mail, votre téléphone et votre photo sont effacés.'),
+            const SizedBox(height: 4),
+            const Text('- Vous ne pourrez plus vous connecter à ce compte.'),
+            const SizedBox(height: 4),
+            const Text('- Vos courses passées et leurs reçus restent conservés pour la durée légale, de façon anonyme.'),
+            if (check.creditBalance > 0) ...[
+              const SizedBox(height: 10),
+              Text('Votre avoir restant de ${money(check.creditBalance)} sera perdu.', style: const TextStyle(color: AppColors.danger, fontWeight: FontWeight.w700)),
+            ],
+          ]),
+          actions: const [DialogCancel('Retour'), DialogConfirm('Supprimer', danger: true)],
+        ),
+      );
+      if (confirmed != true) return;
+      await api.deleteAccount();
+      await RecentPlaces().clear();
+      await auth.forget();
+      messenger.showSnackBar(const SnackBar(content: Text('Votre compte a été supprimé.')));
+    } catch (error) {
+      if (mounted) handleError(context, error);
     }
   }
 
@@ -112,6 +164,12 @@ class _AccountScreenState extends State<AccountScreen> {
                     onPressed: auth.logout,
                     icon: const Icon(Icons.logout),
                     label: const Text('Se déconnecter de ce téléphone'),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+                    onPressed: _deleteAccount,
+                    child: const Text('Supprimer mon compte'),
                   ),
                 ]),
     );

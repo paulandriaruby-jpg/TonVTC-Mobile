@@ -79,6 +79,13 @@ class AuthController extends ChangeNotifier {
     expired();
   }
 
+  // Après la suppression du compte : les sessions n'existent plus côté serveur, on oublie seulement ce téléphone.
+  Future<void> forget() async {
+    if (_googleReady) await GoogleSignIn.instance.signOut();
+    await store.clear();
+    expired();
+  }
+
   void expired() {
     state = AuthState.signedOut;
     notifyListeners();
