@@ -93,7 +93,7 @@ class RouteLines extends StatelessWidget {
   }
 }
 
-// Boutons des fenêtres de confirmation : "Retour" bordé et bouton d'action plein, à la même hauteur (44 px). Les
+// Boutons des fenêtres de confirmation : "Retour" sur fond bleu clair et bouton d'action plein, à la même hauteur (44 px). Les
 // boutons du thème prennent toute la largeur ; ici ils s'adaptent au texte.
 class DialogCancel extends StatelessWidget {
   const DialogCancel(this.label, {super.key});
@@ -122,5 +122,5 @@ class DialogConfirm extends StatelessWidget {
       );
 }
 
-// Bouton "Refuser" / "Supprimer" : bordure et texte rouges, fond blanc.
-ButtonStyle dangerOutline() => OutlinedButton.styleFrom(foregroundColor: AppColors.danger, side: const BorderSide(color: Color(0xFFF5A3AE), width: 1.5));
+// Bouton "Refuser" / "Supprimer" : fond rouge clair plein, texte rouge, sans bordure.
+ButtonStyle dangerOutline() => OutlinedButton.styleFrom(foregroundColor: AppColors.danger, backgroundColor: AppColors.dangerTint, side: BorderSide.none);

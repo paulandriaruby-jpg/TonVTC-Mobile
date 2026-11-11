@@ -4,6 +4,10 @@ import 'package:flutter/material.dart';
 class AppColors {
   static const brand = Color(0xFF3353FF);
   static const brandSoft = Color(0xFFF5F6FF);
+  // Fond des boutons secondaires et des cartes "trajet" : bleu plus marqué que brandSoft, visible sur le gris de la page.
+  static const brandTint = Color(0xFFE4E9FF);
+  static const warm = Color(0xFFFFF3DD);
+  static const warmInk = Color(0xFF9A5B00);
   static const accent = Color(0xFFFB5607);
   static const accentSoft = Color(0xFFFFF5F0);
   static const ink = Color(0xFF041325);
@@ -16,6 +20,7 @@ class AppColors {
   static const successSoft = Color(0xFFDCFFF7);
   static const danger = Color(0xFFEA1F38);
   static const dangerSoft = Color(0xFFFEF1F3);
+  static const dangerTint = Color(0xFFFDE2E6);
 }
 
 ThemeData buildTheme() {
@@ -28,22 +33,22 @@ ThemeData buildTheme() {
     appBarTheme: const AppBarTheme(backgroundColor: Colors.white, foregroundColor: AppColors.ink, elevation: 0, scrolledUnderElevation: 0.5),
     cardTheme: CardThemeData(color: Colors.white, elevation: 0, margin: EdgeInsets.zero, shape: shape),
     filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52), shape: shape, textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700))),
-    // Boutons secondaires (Refuser, Annuler, Itinéraire...) : bordure marquée, fond blanc, texte gras, même hauteur
-    // que le bouton principal, pour ne pas faire "lien" à côté de lui.
+    // Boutons secondaires (Refuser, Retour, Je suis déjà arrivé...) : fond bleu clair plein, sans bordure, texte gras,
+    // même hauteur que le bouton principal.
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         minimumSize: const Size.fromHeight(52),
         shape: shape,
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.ink,
-        side: const BorderSide(color: AppColors.field, width: 1.5),
+        backgroundColor: AppColors.brandTint,
+        foregroundColor: AppColors.brand,
+        side: BorderSide.none,
         textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
       ),
     ),
     // Boutons texte (Ajouter, Mot de passe oublié...) : en bleu, gras, sur un léger fond au toucher.
     textButtonTheme: TextButtonThemeData(style: TextButton.styleFrom(foregroundColor: AppColors.brand, shape: shape, textStyle: const TextStyle(fontWeight: FontWeight.w700))),
     // Fenêtres de confirmation : coins arrondis, boutons alignés à droite avec un espace.
-    dialogTheme: DialogThemeData(backgroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20)),
+    dialogTheme: DialogThemeData(backgroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20)),
     // Champs comme sur le site : label dans le champ au repos, sur la bordure au focus ou avec une valeur.
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
@@ -59,6 +64,13 @@ ThemeData buildTheme() {
       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.brand, width: 2)),
       errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.danger)),
     ),
-    navigationBarTheme: const NavigationBarThemeData(backgroundColor: Colors.white, indicatorColor: AppColors.brandSoft),
+    // Arrondis de 8 px au plus partout (règle TonVTC) : Material 3 met 28 px aux feuilles du bas et une capsule à la
+    // pastille de navigation par défaut.
+    navigationBarTheme: NavigationBarThemeData(backgroundColor: Colors.white, indicatorColor: AppColors.brandSoft, indicatorShape: shape),
+    chipTheme: ChipThemeData(shape: shape),
+    bottomSheetTheme: const BottomSheetThemeData(backgroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(8)))),
+    elevatedButtonTheme: ElevatedButtonThemeData(style: ElevatedButton.styleFrom(shape: shape)),
+    floatingActionButtonTheme: FloatingActionButtonThemeData(shape: shape),
+    segmentedButtonTheme: SegmentedButtonThemeData(style: SegmentedButton.styleFrom(shape: shape)),
   );
 }

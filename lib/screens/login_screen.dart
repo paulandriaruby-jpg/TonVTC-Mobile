@@ -69,7 +69,7 @@ class _LoginScreenState extends State<LoginScreen> {
             Container(
               constraints: BoxConstraints(minHeight: height - (height * .36).clamp(240, 340) + 20),
               transform: Matrix4.translationValues(0, -20, 0),
-              decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+              decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(8))),
               padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
               child: SafeArea(
                 top: false,
@@ -185,16 +185,8 @@ class _Visual extends StatelessWidget {
       height: height,
       child: Stack(fit: StackFit.expand, children: [
         Image.asset('assets/images/accueil-nuit.webp', fit: BoxFit.cover, alignment: const Alignment(0, .35)),
-        const DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Color(0x8C041325), Color(0x1A041325), Color(0xE0041325)],
-              stops: [0, .4, 1],
-            ),
-          ),
-        ),
+        // Voile uni (pas de dégradé) pour lire le texte sur la photo.
+        const ColoredBox(color: Color(0x99041325)),
         SafeArea(
           bottom: false,
           child: Padding(

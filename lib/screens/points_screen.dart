@@ -28,7 +28,7 @@ class PointsCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Container(
-          decoration: const BoxDecoration(gradient: LinearGradient(colors: [AppColors.ink, Color(0xFF1B2F7A)], begin: Alignment.topLeft, end: Alignment.bottomRight)),
+          decoration: const BoxDecoration(color: AppColors.ink),
           padding: const EdgeInsets.all(18),
           child: Row(children: [
             Expanded(
@@ -65,7 +65,7 @@ class _PriorityBadge extends StatelessWidget {
     if (data.prioritized) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(color: const Color(0xFFFFB400), borderRadius: BorderRadius.circular(20)),
+        decoration: BoxDecoration(color: const Color(0xFFFFB400), borderRadius: BorderRadius.circular(8)),
         child: const Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.bolt, size: 16, color: AppColors.ink),
           SizedBox(width: 4),
@@ -76,7 +76,7 @@ class _PriorityBadge extends StatelessWidget {
     if (data.pointsToPriority == null) return const SizedBox.shrink();
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(color: dark ? Colors.white12 : AppColors.brandSoft, borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(color: dark ? Colors.white12 : AppColors.brandSoft, borderRadius: BorderRadius.circular(8)),
       child: Text('Encore ${data.pointsToPriority} pts', style: TextStyle(color: dark ? Colors.white : AppColors.brand, fontWeight: FontWeight.w700, fontSize: 12)),
     );
   }

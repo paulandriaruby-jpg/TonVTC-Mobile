@@ -260,7 +260,10 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
                     padding: const EdgeInsets.only(bottom: 12),
                     child: SectionCard(color: AppColors.accentSoft, child: Text('Arrivé avec ${ride.arrivalDelayMinutes} min de retard sur l\'heure prévue.', style: const TextStyle(color: AppColors.accent, fontWeight: FontWeight.w600))),
                   ),
+                // Trajet sur fond bleu clair ; les actions sont des tuiles blanches (icône au-dessus du libellé), qui
+                // tiennent à trois sur une ligne sans couper les mots.
                 SectionCard(
+                  color: AppColors.brandTint,
                   child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                     RouteLines(pickup: ride.pickup, destination: ride.destination),
                     if (ride.roundTrip && ride.returnAt != null) ...[
@@ -269,29 +272,18 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
                     ],
                     const SizedBox(height: 14),
                     Row(children: [
-                      Expanded(child: OutlinedButton.icon(onPressed: () => _navigate(ride), icon: const Icon(Icons.navigation_outlined), label: const Text('Itinéraire'))),
+                      Expanded(child: _QuickAction(icon: Icons.navigation_outlined, label: 'Itinéraire', onTap: () => _navigate(ride))),
                       if (ride.customerPhone != null && ride.step != RideStep.completed && ride.step != RideStep.cancelled) ...[
                         const SizedBox(width: 8),
-                        Expanded(child: OutlinedButton.icon(onPressed: () => launchUrl(Uri.parse('tel:${ride.customerPhone}')), icon: const Icon(Icons.call_outlined), label: const Text('Appeler'))),
+                        Expanded(child: _QuickAction(icon: Icons.call_outlined, label: 'Appeler', onTap: () => launchUrl(Uri.parse('tel:${ride.customerPhone}')))),
                         const SizedBox(width: 8),
-                        Expanded(child: OutlinedButton.icon(onPressed: () => _sms(ride), icon: const Icon(Icons.sms_outlined), label: const Text('SMS'))),
+                        Expanded(child: _QuickAction(icon: Icons.sms_outlined, label: 'SMS', onTap: () => _sms(ride))),
                       ],
                     ]),
                   ]),
                 ),
                 const SizedBox(height: 12),
-                SectionCard(
-                  child: Column(children: [
-                    _Line('Client', ride.customerName.isEmpty ? '-' : ride.customerName),
-                    if (ride.babySeats + ride.boosterSeats > 0) _Line('Enfants', '${ride.babySeats} siège(s) bébé - ${ride.boosterSeats} rehausseur(s)'),
-                    if (ride.carName != null) _Line('Véhicule', ride.carName!),
-                    _Line('Référence', ride.reference.substring(0, ride.reference.length.clamp(0, 12))),
-                    if (ride.driverShare != null) _Line('Votre gain', money(ride.driverShare), strong: true)
-                    else if (ride.expectedShare != null && ride.step != RideStep.cancelled) _Line('Votre gain prévu', money(ride.expectedShare), strong: true)
-                    else _Line('Prix de la course', money(ride.quotedPrice)),
-                    if (ride.waitingFee > 0) _Line('Attente facturée', money(ride.waitingFee)),
-                  ]),
-                ),
+                _Details(ride: ride),
                 const SizedBox(height: 12),
                 _Notes(notes: ride.notes, onAdd: ride.step == RideStep.cancelled ? null : () => _addRemark(ride)),
                 const SizedBox(height: 16),
@@ -394,13 +386,21 @@ class _Notes extends StatelessWidget {
   final List<DriverNote> notes;
   final VoidCallback? onAdd;
 
+  // Fond sable, pour distinguer les remarques des informations de la course.
   @override
   Widget build(BuildContext context) {
     return SectionCard(
+      color: AppColors.warm,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
-          const Expanded(child: Text('Remarques', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15))),
-          if (onAdd != null) TextButton.icon(onPressed: onAdd, icon: const Icon(Icons.add_comment_outlined, size: 18), label: const Text('Ajouter')),
+          const Icon(Icons.sticky_note_2_outlined, color: AppColors.warmInk, size: 20),
+          const SizedBox(width: 8),
+          const Expanded(child: Text('Remarques', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: AppColors.warmInk))),
+          if (onAdd != null)
+            TextButton.icon(
+              style: TextButton.styleFrom(backgroundColor: Colors.white, foregroundColor: AppColors.warmInk),
+              onPressed: onAdd, icon: const Icon(Icons.add, size: 18), label: const Text('Ajouter'),
+            ),
         ]),
         if (notes.isEmpty)
           const Text('Aucune remarque. Ajoutez une information utile pour l\'équipe (bagages, accès, attente...).', style: TextStyle(color: AppColors.muted, fontSize: 13))
@@ -424,19 +424,86 @@ class _Notes extends StatelessWidget {
   }
 }
 
+// Action rapide du trajet (Itinéraire, Appeler, SMS) : tuile blanche sur le fond bleu, icône au-dessus du libellé.
+class _QuickAction extends StatelessWidget {
+  const _QuickAction({required this.icon, required this.label, required this.onTap});
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onTap,
+          child: SizedBox(
+            height: 64,
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Icon(icon, color: AppColors.brand, size: 22),
+              const SizedBox(height: 4),
+              Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.ink)),
+            ]),
+          ),
+        ),
+      );
+}
+
+// Client, véhicule, référence, puis le gain dans un bandeau bleu en bas de la carte.
+class _Details extends StatelessWidget {
+  const _Details({required this.ride});
+
+  final Ride ride;
+
+  @override
+  Widget build(BuildContext context) {
+    final (amountLabel, amount) = ride.driverShare != null
+        ? ('Votre gain', ride.driverShare)
+        : ride.expectedShare != null && ride.step != RideStep.cancelled
+            ? ('Votre gain prévu', ride.expectedShare)
+            : ('Prix de la course', ride.quotedPrice);
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+          child: Column(children: [
+            _Line('Client', ride.customerName.isEmpty ? '-' : ride.customerName),
+            if (ride.babySeats + ride.boosterSeats > 0) _Line('Enfants', '${ride.babySeats} siège(s) bébé - ${ride.boosterSeats} rehausseur(s)'),
+            if (ride.carName != null) _Line('Véhicule', ride.carName!),
+            _Line('Référence', ride.reference.substring(0, ride.reference.length.clamp(0, 12))),
+            if (ride.waitingFee > 0) _Line('Attente facturée', money(ride.waitingFee)),
+          ]),
+        ),
+        Container(
+          color: AppColors.brand,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(children: [
+            const Icon(Icons.account_balance_wallet_outlined, color: Colors.white, size: 20),
+            const SizedBox(width: 10),
+            Expanded(child: Text(amountLabel, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600))),
+            Text(money(amount), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18)),
+          ]),
+        ),
+      ]),
+    );
+  }
+}
+
 class _Line extends StatelessWidget {
-  const _Line(this.label, this.value, {this.strong = false});
+  const _Line(this.label, this.value);
 
   final String label;
   final String value;
-  final bool strong;
 
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 6),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           SizedBox(width: 120, child: Text(label, style: const TextStyle(color: AppColors.muted))),
-          Expanded(child: Text(value, style: TextStyle(fontWeight: strong ? FontWeight.w800 : FontWeight.w500, color: strong ? AppColors.brand : AppColors.ink))),
+          Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.w500, color: AppColors.ink))),
         ]),
       );
 }
@@ -455,22 +522,25 @@ class _StepTracker extends StatelessWidget {
       final (label, color, background) = stepLabel(step);
       return Align(alignment: Alignment.centerLeft, child: Pill(label, color: color, background: background));
     }
+    // Une course terminée a toutes ses étapes faites : la dernière est cochée elle aussi, pas numérotée.
     final current = _steps.indexOf(step);
+    final finished = step == RideStep.completed;
     return SectionCard(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+      color: AppColors.ink,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
       child: Row(children: [
         for (var i = 0; i < _steps.length; i++)
           Expanded(
             child: Column(children: [
               CircleAvatar(
-                radius: 13,
-                backgroundColor: i <= current ? AppColors.brand : AppColors.surface,
-                child: i < current
-                    ? const Icon(Icons.check, size: 15, color: Colors.white)
-                    : Text('${i + 1}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: i == current ? Colors.white : AppColors.muted)),
+                radius: 14,
+                backgroundColor: finished ? AppColors.success : i < current ? AppColors.brand : i == current ? AppColors.accent : Colors.white.withValues(alpha: 0.12),
+                child: i < current || finished
+                    ? const Icon(Icons.check, size: 16, color: Colors.white)
+                    : Text('${i + 1}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: i == current ? Colors.white : Colors.white60)),
               ),
               const SizedBox(height: 6),
-              Text(stepLabel(_steps[i]).$1, textAlign: TextAlign.center, style: TextStyle(fontSize: 11, fontWeight: i == current ? FontWeight.w800 : FontWeight.w500, color: i <= current ? AppColors.ink : AppColors.muted)),
+              Text(stepLabel(_steps[i]).$1, textAlign: TextAlign.center, style: TextStyle(fontSize: 11, fontWeight: i == current ? FontWeight.w800 : FontWeight.w500, color: i <= current ? Colors.white : Colors.white60)),
             ]),
           ),
       ]),
