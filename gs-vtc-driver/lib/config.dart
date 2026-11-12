@@ -8,3 +8,6 @@ const String siteUrl = String.fromEnvironment('SITE_URL', defaultValue: 'http://
 
 // Nom affiché dans l'app : le nom définitif n'est pas encore choisi.
 const String appName = String.fromEnvironment('APP_NAME', defaultValue: 'Chauffeur');
+
+// Staging : jeton envoyé à l'API (en-tête X-Staging-Token), qui refuse sinon. Vide hors staging.
+const String stagingToken = String.fromEnvironment('STAGING_TOKEN');

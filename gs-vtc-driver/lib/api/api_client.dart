@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../auth/session_store.dart';
+import '../config.dart';
 
 class ApiException implements Exception {
   ApiException(this.message, {this.status, this.code});
@@ -39,7 +40,7 @@ class ApiClient {
   Future<dynamic> upload(String path, {required Map<String, String> fields, required String fileField, required List<int> bytes, required String filename}) async {
     Future<http.Response> attempt(StoredSession session) async {
       final request = http.MultipartRequest('POST', _uri(path))
-        ..headers.addAll({'Accept': 'application/json', 'Authorization': 'Bearer ${session.token}'})
+        ..headers.addAll({'Accept': 'application/json', if (stagingToken.isNotEmpty) 'X-Staging-Token': stagingToken, 'Authorization': 'Bearer ${session.token}'})
         ..fields.addAll(fields)
         ..files.add(http.MultipartFile.fromBytes(fileField, bytes, filename: filename));
       return http.Response.fromStream(await _http.send(request));
@@ -104,6 +105,7 @@ class ApiClient {
   Map<String, String> _headers(String? token) => {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        if (stagingToken.isNotEmpty) 'X-Staging-Token': stagingToken,
         if (token != null) 'Authorization': 'Bearer $token',
       };
 

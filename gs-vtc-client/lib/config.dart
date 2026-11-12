@@ -11,3 +11,6 @@ const String googleServerClientId = String.fromEnvironment('GOOGLE_SERVER_CLIENT
 
 // Nom affiché dans l'app : le nom définitif n'est pas encore choisi.
 const String appName = String.fromEnvironment('APP_NAME', defaultValue: 'TonVTC');
+
+// Staging : jeton envoyé à l'API (en-tête X-Staging-Token), qui refuse sinon. Vide hors staging.
+const String stagingToken = String.fromEnvironment('STAGING_TOKEN');

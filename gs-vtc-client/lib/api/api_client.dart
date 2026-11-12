@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../auth/session_store.dart';
+import '../config.dart';
 
 class ApiException implements Exception {
   ApiException(this.message, {this.status, this.code});
@@ -81,6 +82,7 @@ class ApiClient {
   Map<String, String> _headers(String? token) => {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        if (stagingToken.isNotEmpty) 'X-Staging-Token': stagingToken,
         if (token != null) 'Authorization': 'Bearer $token',
       };
 
