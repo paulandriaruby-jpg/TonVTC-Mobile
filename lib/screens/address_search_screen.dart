@@ -6,17 +6,21 @@ import 'package:provider/provider.dart';
 
 import '../api/client_api.dart';
 import '../booking/recent_places.dart';
+import '../location/device_location.dart';
 import '../models/models.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 
-// Recherche d'une adresse (suggestions Google Places renvoyées par l'API). Renvoie le lieu choisi.
+// Recherche d'une adresse (suggestions Google Places renvoyées par l'API). Renvoie le lieu choisi. Pour le départ,
+// "Utiliser ma position" propose l'adresse la plus proche du téléphone (avec l'accord du client).
 class AddressSearchScreen extends StatefulWidget {
-  const AddressSearchScreen({super.key, required this.title, this.initialQuery});
+  const AddressSearchScreen({super.key, required this.title, this.initialQuery, this.withLocation = false, this.locator = const GeolocatorLocator()});
 
   final String title;
   // Recherche lancée à l'ouverture (destinations fréquentes de l'accueil).
   final String? initialQuery;
+  final bool withLocation;
+  final DeviceLocator locator;
 
   @override
   State<AddressSearchScreen> createState() => _AddressSearchScreenState();
@@ -74,6 +78,32 @@ class _AddressSearchScreenState extends State<AddressSearchScreen> {
     });
   }
 
+  bool _locating = false;
+
+  Future<void> _useLocation() async {
+    final api = context.read<ClientApi>();
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() {
+      _locating = true;
+      _error = null;
+    });
+    try {
+      final position = await widget.locator.current();
+      final place = await api.reverse(position.lat, position.lng);
+      if (mounted) Navigator.of(context).pop(place);
+    } on LocationException catch (failure) {
+      if (!mounted) return;
+      setState(() => _error = failure.message);
+      if (failure.reason == LocationFailure.deniedForever) {
+        messenger.showSnackBar(SnackBar(content: const Text('Position bloquée pour TonVTC.'), action: SnackBarAction(label: 'Réglages', onPressed: widget.locator.openSettings)));
+      }
+    } catch (_) {
+      if (mounted) setState(() => _error = 'Aucune adresse trouvée à votre position. Saisissez l\'adresse de départ.');
+    } finally {
+      if (mounted) setState(() => _locating = false);
+    }
+  }
+
   Future<void> _pick(PlaceSuggestion suggestion) async {
     setState(() => _loading = true);
     try {
@@ -108,10 +138,24 @@ class _AddressSearchScreenState extends State<AddressSearchScreen> {
           ),
         ),
         if (_error != null) Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Text(_error!, style: const TextStyle(color: AppColors.danger))),
-        // Champ vide : les dernières adresses choisies.
-        if (_results.isEmpty && _input.text.trim().length < 3 && _recentPlaces.isNotEmpty)
+        // Champ vide : la position du téléphone (départ) puis les dernières adresses choisies.
+        if (_results.isEmpty && _input.text.trim().length < 3 && (_recentPlaces.isNotEmpty || widget.withLocation))
           Expanded(
             child: ListView(children: [
+              if (widget.withLocation) ...[
+                ListTile(
+                  tileColor: Colors.white,
+                  leading: _locating
+                      ? const SizedBox(width: 24, height: 24, child: Padding(padding: EdgeInsets.all(2), child: CircularProgressIndicator(strokeWidth: 2.5)))
+                      : const Icon(Icons.my_location, color: AppColors.brand),
+                  title: const Text('Utiliser ma position', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.brand)),
+                  subtitle: const Text('Votre téléphone vous demande votre accord'),
+                  onTap: _locating ? null : _useLocation,
+                ),
+                const Divider(height: 1),
+                const SizedBox(height: 8),
+              ],
+              if (_recentPlaces.isNotEmpty)
               const Padding(
                 padding: EdgeInsets.fromLTRB(16, 4, 16, 8),
                 child: Text('Adresses récentes', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.muted, fontSize: 13)),

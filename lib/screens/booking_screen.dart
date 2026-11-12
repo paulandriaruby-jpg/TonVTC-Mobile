@@ -97,7 +97,7 @@ class _TripStep extends StatelessWidget {
 
   Future<void> _pickAddress(BuildContext context, bool isPickup, {String? query}) async {
     final place = await Navigator.of(context).push<Place>(
-      MaterialPageRoute(builder: (_) => AddressSearchScreen(title: isPickup ? 'Adresse de départ' : 'Adresse d\'arrivée', initialQuery: query)),
+      MaterialPageRoute(builder: (_) => AddressSearchScreen(title: isPickup ? 'Adresse de départ' : 'Adresse d\'arrivée', initialQuery: query, withLocation: isPickup)),
     );
     if (place == null || !context.mounted) return;
     context.read<BookingController>().update((draft) => isPickup ? draft.pickup = place : draft.destination = place);

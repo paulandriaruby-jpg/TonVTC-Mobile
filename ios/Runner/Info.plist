@@ -6,6 +6,8 @@
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Votre position sert uniquement à proposer l'adresse de départ de votre course. Elle n'est pas enregistrée.</string>
 	<key>CFBundleDisplayName</key>
 	<string>Gs Vtc Client</string>
 	<key>CFBundleExecutable</key>

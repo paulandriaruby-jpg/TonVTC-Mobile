@@ -15,6 +15,10 @@ class ClientApi {
   Future<Place> place(String placeId, String sessionToken) async =>
       Place.fromJson(await client.get('/api/v1/places/$placeId', query: {'session_token': sessionToken}) as Map<String, dynamic>);
 
+  // Adresse la plus proche d'une position ("Utiliser ma position").
+  Future<Place> reverse(double lat, double lng) async =>
+      Place.fromJson(await client.get('/api/v1/places/reverse', query: {'lat': '$lat', 'lng': '$lng'}) as Map<String, dynamic>);
+
   Future<Quote> quote(Map<String, dynamic> trip) async => Quote.fromJson(await client.post('/api/v1/quotes', trip) as Map<String, dynamic>);
 
   Future<({String code, String name, double discount})> checkPromo(String code, double amount, String email) async {
