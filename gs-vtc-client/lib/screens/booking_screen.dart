@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../util/paris_time.dart';
 import '../api/api_client.dart';
 import '../auth/auth_controller.dart';
 import '../booking/booking_controller.dart';
@@ -103,22 +104,24 @@ class _TripStep extends StatelessWidget {
     context.read<BookingController>().update((draft) => isPickup ? draft.pickup = place : draft.destination = place);
   }
 
+  // Heures de départ et de retour choisies à l'heure de Paris, même si le téléphone est réglé sur un autre fuseau.
   DateTime _current(BookingController booking, bool isReturn) =>
-      isReturn ? (booking.returning ?? booking.departure.add(const Duration(hours: 3))) : booking.departure;
+      inParis(isReturn ? (booking.returning ?? booking.departure.add(const Duration(hours: 3))) : booking.departure);
 
   Future<void> _pickDay(BuildContext context, {required bool isReturn}) async {
     final booking = context.read<BookingController>();
     final current = _current(booking, isReturn);
-    final first = isReturn ? booking.departure : booking.earliestDeparture;
+    final first = inParis(isReturn ? booking.departure : booking.earliestDeparture);
+    final initial = current.isBefore(first) ? first : current;
     final date = await showDatePicker(
       context: context,
-      initialDate: current.isBefore(first) ? first : current,
+      initialDate: DateTime(initial.year, initial.month, initial.day),
       firstDate: DateTime(first.year, first.month, first.day),
       lastDate: booking.now.add(const Duration(days: 365)),
       helpText: isReturn ? 'Date du retour' : 'Date du départ',
     );
     if (date == null || !context.mounted) return;
-    final chosen = roundToQuarter(DateTime(date.year, date.month, date.day, current.hour, current.minute));
+    final chosen = roundToQuarter(parisTime(date.year, date.month, date.day, current.hour, current.minute));
     booking.update((draft) => isReturn ? draft.returning = chosen : draft.departure = chosen);
   }
 
@@ -127,7 +130,7 @@ class _TripStep extends StatelessWidget {
     final current = _current(booking, isReturn);
     final picked = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(current), helpText: 'Heure (par quart d\'heure)');
     if (picked == null || !context.mounted) return;
-    final chosen = roundToQuarter(DateTime(current.year, current.month, current.day, picked.hour, picked.minute));
+    final chosen = roundToQuarter(parisTime(current.year, current.month, current.day, picked.hour, picked.minute));
     booking.update((draft) => isReturn ? draft.returning = chosen : draft.departure = chosen);
   }
 

@@ -1,7 +1,8 @@
 import 'package:intl/intl.dart';
 
-// Formats français, heure de Paris (l'appareil peut être réglé ailleurs : on affiche l'heure locale de l'appareil,
-// qui est celle du chauffeur sur place).
+import 'paris_time.dart';
+
+// Formats français, toujours à l'heure de Paris (le téléphone peut être réglé sur un autre fuseau).
 final _money = NumberFormat.currency(locale: 'fr_FR', symbol: '€', decimalDigits: 2);
 
 String money(Object? value) {
@@ -10,20 +11,18 @@ String money(Object? value) {
   return _money.format(amount).replaceAll(RegExp('[\u00a0\u202f]'), ' ');
 }
 
-String dateTime(DateTime value) => DateFormat("EEE d MMM 'à' HH:mm", 'fr_FR').format(value.toLocal());
+String dateTime(DateTime value) => DateFormat("EEE d MMM 'à' HH:mm", 'fr_FR').format(inParis(value));
 
 String dayLabel(DateTime value) {
-  final local = value.toLocal();
-  final today = DateTime.now();
-  final date = DateTime(local.year, local.month, local.day);
-  final difference = date.difference(DateTime(today.year, today.month, today.day)).inDays;
+  final local = inParis(value);
+  final difference = parisDay(value).difference(parisDay(DateTime.now())).inDays;
   if (difference == 0) return "Aujourd'hui";
   if (difference == 1) return 'Demain';
   if (difference == -1) return 'Hier';
   return _capitalize(DateFormat('EEEE d MMMM', 'fr_FR').format(local));
 }
 
-String time(DateTime value) => DateFormat('HH:mm', 'fr_FR').format(value.toLocal());
+String time(DateTime value) => DateFormat('HH:mm', 'fr_FR').format(inParis(value));
 
 String monthLabel(String isoMonth) => _capitalize(DateFormat('MMMM yyyy', 'fr_FR').format(DateTime.parse(isoMonth)));
 

@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
+import '../util/paris_time.dart';
 
 // Code couleur de l'onglet "À venir" : aujourd'hui (vert), demain (bleu), plus tard (blanc). Les jours se comptent
-// à minuit, à l'heure du téléphone ; une course déjà commencée (départ passé) compte pour aujourd'hui.
+// à minuit, à l'heure de Paris (pas celle du téléphone) ; une course déjà commencée (départ passé) compte pour
+// aujourd'hui.
 enum RideDay { today, tomorrow, later }
 
 RideDay rideDay(DateTime departure, DateTime now) {
-  final local = departure.toLocal();
-  final today = DateTime(now.year, now.month, now.day);
-  final day = DateTime(local.year, local.month, local.day);
+  final today = parisDay(now);
+  final day = parisDay(departure);
   if (!day.isAfter(today)) return RideDay.today;
-  if (day == DateTime(today.year, today.month, today.day + 1)) return RideDay.tomorrow;
+  if (day == today.add(const Duration(days: 1))) return RideDay.tomorrow;
   return RideDay.later;
 }
 

@@ -387,7 +387,7 @@ class PointEntry {
   PointEntry.fromJson(Map<String, dynamic> json)
       : label = json['label'] as String? ?? json['kind'] as String,
         points = json['points'] as int,
-        createdAt = DateTime.parse(json['created_at'] as String).toLocal(),
+        createdAt = DateTime.parse(json['created_at'] as String),
         bookingReference = json['booking_reference'] as String?,
         counted = json['counted'] != false;
 

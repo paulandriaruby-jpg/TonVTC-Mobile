@@ -1,5 +1,8 @@
 // Règles de réservation, identiques au site : au moins 2 h avant le départ, créneaux d'un quart d'heure,
-// retour après l'aller, coordonnées complètes. Le serveur revérifie tout à la création.
+// retour après l'aller, coordonnées complètes. Le serveur revérifie tout à la création. Les heures sont celles de
+// Paris, quel que soit le fuseau du téléphone.
+
+import '../util/paris_time.dart';
 
 const minimumNotice = Duration(hours: 2);
 const maxChildSeats = 3;
@@ -9,13 +12,14 @@ DateTime minimumDeparture(DateTime now) {
   final earliest = now.add(minimumNotice);
   final quarter = const Duration(minutes: 15).inMilliseconds;
   final rounded = (earliest.millisecondsSinceEpoch / quarter).ceil() * quarter;
-  return DateTime.fromMillisecondsSinceEpoch(rounded);
+  return inParis(DateTime.fromMillisecondsSinceEpoch(rounded, isUtc: true));
 }
 
-// Ramène une heure choisie au quart d'heure (09:07 -> 09:15).
+// Ramène une heure choisie au quart d'heure (09:07 -> 09:15), à l'heure de Paris.
 DateTime roundToQuarter(DateTime value) {
-  final extra = value.minute % 15;
-  final base = DateTime(value.year, value.month, value.day, value.hour, value.minute - extra);
+  final local = inParis(value);
+  final extra = local.minute % 15;
+  final base = parisTime(local.year, local.month, local.day, local.hour, local.minute).subtract(Duration(minutes: extra));
   return extra == 0 ? base : base.add(const Duration(minutes: 15));
 }
 
