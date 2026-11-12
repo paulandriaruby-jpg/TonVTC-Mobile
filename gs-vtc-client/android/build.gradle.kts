@@ -18,6 +18,13 @@ subprojects {
 subprojects {
     project.evaluationDependsOn(":app")
 }
+// Analyse "lint vital" des builds release désactivée : celle du plugin Stripe (stripe_android) demande
+// play-services-tapandpay, absent des dépôts publics, et fait échouer le build. Elle ne change rien à l'APK.
+subprojects {
+    tasks.configureEach {
+        if (name.startsWith("lintVital")) enabled = false
+    }
+}
 
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
