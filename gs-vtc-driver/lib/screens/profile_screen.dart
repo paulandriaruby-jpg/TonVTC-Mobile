@@ -153,9 +153,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ListTile(
                     leading: const Icon(Icons.support_agent_outlined),
                     title: const Text('Contacter l\'équipe TonVTC'),
-                    subtitle: const Text('contact@tonvtc.com'),
+                    subtitle: const Text('contact@ton-vtc.com'),
                     trailing: const Icon(Icons.mail_outline, size: 18),
-                    onTap: () => launchUrl(Uri(scheme: 'mailto', path: 'contact@tonvtc.com')),
+                    onTap: () => launchUrl(Uri(scheme: 'mailto', path: 'contact@ton-vtc.com')),
                   ),
                   const Divider(height: 1),
                   ListTile(

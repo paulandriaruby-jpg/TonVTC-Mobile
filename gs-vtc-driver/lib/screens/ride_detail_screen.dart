@@ -116,7 +116,7 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
     await launchUrl(Uri(scheme: 'sms', path: ride.customerPhone, queryParameters: {'body': body}));
   }
 
-  Future<void> _contactTeam(Ride ride) => launchUrl(Uri(scheme: 'mailto', path: 'contact@tonvtc.com', queryParameters: {'subject': 'Course ${ride.reference.substring(0, ride.reference.length.clamp(0, 12))}'}));
+  Future<void> _contactTeam(Ride ride) => launchUrl(Uri(scheme: 'mailto', path: 'contact@ton-vtc.com', queryParameters: {'subject': 'Course ${ride.reference.substring(0, ride.reference.length.clamp(0, 12))}'}));
 
   Future<void> _report(Ride ride) async {
     const categories = {
